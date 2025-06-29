@@ -27,33 +27,33 @@ The system is designed in three distinct phases to ensure efficiency and scalabi
 ```mermaid
 graph TD
     subgraph "Phase 0: Pre-processing & Ingestion (Offline)"
-        A[OpenAlex API for Researcher Data] --> B{Researcher Profile Processor};
-        B -- Time-Weights & Embeddings --> C[Researcher Profile Datastore];
+        A[OpenAlex API for Researcher Data] --> B{Researcher Profile Processor}
+        B -->|Time-Weights & Embeddings| C[Researcher Profile Datastore]
         
-        D[User Uploads Solicitation PDF] --> E{PDF Parser};
-        E -- Raw Text --> F[Solicitation Deconstruction Engine];
+        D[User Uploads Solicitation PDF] --> E{PDF Parser}
+        E -->|Raw Text| F[Solicitation Deconstruction Engine]
         
         subgraph "Solicitation Deconstruction Engine (Hybrid Approach)"
-            F -- to General LLM (Gemini) --> G[Narrative Skill Phrases];
-            F -- to Local Classifier --> H[Formal OpenAlex Topics];
-            G --> I{Fusion & Deduplication Logic};
-            H --> I;
+            F -->|to General LLM Gemini| G[Narrative Skill Phrases]
+            F -->|to Local Classifier| H[Formal OpenAlex Topics]
+            G --> I{Fusion & Deduplication Logic}
+            H --> I
         end
         
-        I -- The "Required Skills Checklist" --> J[Structured Solicitation Object];
+        I -->|Required Skills Checklist| J[Structured Solicitation Object]
     end
 
     subgraph "Phase 1: Core Analysis (On-Demand)"
-        C --> K[Skill Affinity Engine];
-        J --> K;
-        K -- Calculates Score for each (Researcher, Skill) pair --> L(Affinity Matrix);
+        C --> K[Skill Affinity Engine]
+        J --> K
+        K -->|Calculates Score for each pair| L(Affinity Matrix)
     end
 
     subgraph "Phase 2: Team Assembly & Strategic Output (On-Demand)"
-        L --> M{Dream Team Greedy Algorithm};
-        M --> N[Proposed Team & Coverage Report];
-        N -- Formatted as a prompt --> O{Gap Analysis Agent (Gemini API)};
-        O --> P[Final Strategic Report];
+        L --> M{Dream Team Greedy Algorithm}
+        M --> N[Proposed Team & Coverage Report]
+        N -->|Formatted as a prompt| O{Gap Analysis Agent - Gemini API}
+        O --> P[Final Strategic Report]
     end
 ```
 
