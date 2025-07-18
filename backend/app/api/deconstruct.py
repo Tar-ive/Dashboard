@@ -80,9 +80,26 @@ async def deconstruct_solicitation(file: UploadFile = File(...)):
 def enqueue_deconstruct_task(job_id: str, file_path: str) -> None:
     """
     Enqueue deconstruction task for background processing.
-    For now, this is a placeholder that will be implemented later.
+    For testing purposes, this runs the task directly.
+    In production, this should use RQ or similar queue system.
     """
-    # TODO: Implement RQ job enqueueing
-    # This will be implemented in task 3.6
     logger.info(f"Enqueuing deconstruct task for job {job_id} with file {file_path}")
-    pass
+    
+    # Import here to avoid circular imports
+    from app.tasks.deconstruction_task import deconstruct_solicitation_task
+    import threading
+    
+    # Run task in background thread for testing
+    def run_task():
+        try:
+            logger.info(f"Starting background task for job {job_id}")
+            result = deconstruct_solicitation_task(job_id, file_path)
+            logger.info(f"Background task completed for job {job_id}")
+        except Exception as e:
+            logger.error(f"Background task failed for job {job_id}: {e}")
+    
+    # Start background thread
+    thread = threading.Thread(target=run_task)
+    thread.daemon = True
+    thread.start()
+    logger.info(f"Background task thread started for job {job_id}")

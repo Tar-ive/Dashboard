@@ -1,19 +1,69 @@
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   api:
-    build: .
+    build: 
+      context: .
+      target: production
     ports:
       - "8000:8000"
     volumes:
-      - ./app:/app/app
+      - ./app:/app/app:ro
       - ./data:/app/data
+      - uploads:/app/data/uploads
     environment:
       - ENV=development
       - PYTHONPATH=/app
-      # ADD THESE ENVIRONMENT VARIABLES:
+      - DEBUG=true
+      - LOG_LEVEL=INFO
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      # API Keys - these should be set in .env file
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - DEBUG_MODE=true
-      - API_BASE_URL=http://localhost:8000
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      # Model Configuration
+      - TF_IDF_ALPHA=0.7
+      - TF_IDF_BETA=0.3
+      - DEFAULT_TEAM_SIZE=4
+      # Paths
+      - DATA_DIR=/app/data
+      - MODELS_DIR=/app/data/models
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
+  # Optional: Redis Commander for debugging
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    profiles:
+      - debug
+
 volumes:
+  redis_data:
   uploads:

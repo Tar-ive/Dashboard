@@ -1,0 +1,366 @@
+{
+  "info": {
+    "name": "NSF Solicitation Deconstruction API",
+    "description": "Complete workflow testing for PDF solicitation deconstruction including upload, status polling, and result validation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api",
+      "type": "string",
+      "description": "API base URL for containerized deployment"
+    },
+    {
+      "key": "job_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "max_poll_attempts",
+      "value": "20",
+      "type": "string"
+    },
+    {
+      "key": "poll_interval_ms",
+      "value": "5000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Upload PDF Solicitation",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Test that upload was successful",
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "// Parse response and save job_id",
+              "pm.test('Response has job_id', function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.have.property('job_id');",
+              "    pm.expect(responseJson).to.have.property('status');",
+              "    pm.expect(responseJson.status).to.equal('queued');",
+              "    ",
+              "    // Save job_id for subsequent requests",
+              "    pm.environment.set('job_id', responseJson.job_id);",
+              "    console.log('Job ID saved:', responseJson.job_id);",
+              "});",
+              "",
+              "// Validate response structure",
+              "pm.test('Response structure is valid', function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.have.property('message');",
+              "    pm.expect(responseJson.message).to.include('Processing started');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "NSF 24-569_ Mathematical Foundations of Artificial Intelligence (MFAI) _ NSF - National Science Foundation.pdf",
+              "description": "Sample NSF solicitation PDF for testing"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/deconstruct",
+          "host": ["{{base_url}}"],
+          "path": ["deconstruct"]
+        },
+        "description": "Upload a PDF solicitation file for deconstruction. This endpoint accepts PDF files and immediately returns a job_id for tracking the background processing."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Check Job Status (Single)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Test that status check was successful",
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "// Validate response structure",
+              "pm.test('Response has required fields', function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.have.property('job_id');",
+              "    pm.expect(responseJson).to.have.property('status');",
+              "    pm.expect(responseJson).to.have.property('created_at');",
+              "});",
+              "",
+              "// Log current status",
+              "const responseJson = pm.response.json();",
+              "console.log('Current job status:', responseJson.status);",
+              "console.log('Progress:', responseJson.progress || 'N/A');",
+              "",
+              "// If completed, validate result structure",
+              "if (responseJson.status === 'completed') {",
+              "    pm.test('Completed job has result', function () {",
+              "        pm.expect(responseJson).to.have.property('result');",
+              "        pm.expect(responseJson.result).to.not.be.null;",
+              "    });",
+              "    ",
+              "    console.log('Job completed! Result keys:', Object.keys(responseJson.result || {}));",
+              "}",
+              "",
+              "// If failed, log error",
+              "if (responseJson.status === 'failed') {",
+              "    console.log('Job failed with error:', responseJson.error_message);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/jobs/{{job_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["jobs", "{{job_id}}"]
+        },
+        "description": "Check the status of a specific job. Returns current status, progress, and results if completed."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Poll Job Status (Automated)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Test that status check was successful",
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const responseJson = pm.response.json();",
+              "const currentStatus = responseJson.status;",
+              "const maxAttempts = parseInt(pm.environment.get('max_poll_attempts') || '20');",
+              "const pollInterval = parseInt(pm.environment.get('poll_interval_ms') || '5000');",
+              "",
+              "// Initialize attempt counter if not exists",
+              "let attemptCount = parseInt(pm.environment.get('poll_attempt_count') || '0');",
+              "attemptCount++;",
+              "pm.environment.set('poll_attempt_count', attemptCount.toString());",
+              "",
+              "console.log(`Polling attempt ${attemptCount}/${maxAttempts} - Status: ${currentStatus}`);",
+              "",
+              "// Check if job is still processing",
+              "if (currentStatus === 'queued' || currentStatus === 'processing') {",
+              "    if (attemptCount < maxAttempts) {",
+              "        console.log(`Job still ${currentStatus}, will retry in ${pollInterval}ms...`);",
+              "        ",
+              "        // Schedule next poll",
+              "        setTimeout(() => {",
+              "            postman.setNextRequest('3. Poll Job Status (Automated)');",
+              "        }, pollInterval);",
+              "    } else {",
+              "        console.log('Max polling attempts reached. Job may be taking longer than expected.');",
+              "        pm.environment.unset('poll_attempt_count');",
+              "    }",
+              "} else {",
+              "    // Job completed or failed",
+              "    console.log(`Job finished with status: ${currentStatus}`);",
+              "    pm.environment.unset('poll_attempt_count');",
+              "    ",
+              "    if (currentStatus === 'completed') {",
+              "        pm.test('Job completed successfully', function () {",
+              "            pm.expect(responseJson).to.have.property('result');",
+              "            pm.expect(responseJson.result).to.not.be.null;",
+              "        });",
+              "        ",
+              "        // Validate structured solicitation result",
+              "        pm.test('Result has structured solicitation data', function () {",
+              "            const result = responseJson.result;",
+              "            pm.expect(result).to.have.property('solicitation_id');",
+              "            pm.expect(result).to.have.property('award_title');",
+              "            pm.expect(result).to.have.property('full_text');",
+              "        });",
+              "        ",
+              "        console.log('Structured result keys:', Object.keys(responseJson.result));",
+              "    } else if (currentStatus === 'failed') {",
+              "        console.log('Job failed with error:', responseJson.error_message);",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/jobs/{{job_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["jobs", "{{job_id}}"]
+        },
+        "description": "Automated polling for job status. This request will automatically retry until the job completes or fails, or until max attempts are reached."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Validate Structured Result",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Test that status check was successful",
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const responseJson = pm.response.json();",
+              "",
+              "// Ensure job is completed",
+              "pm.test('Job is completed', function () {",
+              "    pm.expect(responseJson.status).to.equal('completed');",
+              "});",
+              "",
+              "// Validate StructuredSolicitation model fields",
+              "pm.test('Result has all required StructuredSolicitation fields', function () {",
+              "    const result = responseJson.result;",
+              "    ",
+              "    // Core identification",
+              "    pm.expect(result).to.have.property('solicitation_id');",
+              "    ",
+              "    // Extracted metadata",
+              "    pm.expect(result).to.have.property('award_title');",
+              "    pm.expect(result).to.have.property('funding_ceiling');",
+              "    pm.expect(result).to.have.property('project_duration_months');",
+              "    ",
+              "    // Extracted rules",
+              "    pm.expect(result).to.have.property('pi_eligibility_rules');",
+              "    pm.expect(result).to.have.property('institutional_limitations');",
+              "    ",
+              "    // Required skills",
+              "    pm.expect(result).to.have.property('required_scientific_skills');",
+              "    pm.expect(result).to.have.property('preferred_skills');",
+              "    ",
+              "    // Full text and sections",
+              "    pm.expect(result).to.have.property('full_text');",
+              "    pm.expect(result).to.have.property('extracted_sections');",
+              "    ",
+              "    // Processing metadata",
+              "    pm.expect(result).to.have.property('processing_time_seconds');",
+              "    pm.expect(result).to.have.property('created_at');",
+              "});",
+              "",
+              "// Validate data types and content",
+              "pm.test('Result data types are correct', function () {",
+              "    const result = responseJson.result;",
+              "    ",
+              "    pm.expect(result.solicitation_id).to.be.a('string');",
+              "    pm.expect(result.award_title).to.be.a('string');",
+              "    pm.expect(result.pi_eligibility_rules).to.be.an('array');",
+              "    pm.expect(result.required_scientific_skills).to.be.an('array');",
+              "    pm.expect(result.full_text).to.be.a('string');",
+              "    pm.expect(result.extracted_sections).to.be.an('object');",
+              "});",
+              "",
+              "// Log detailed result information",
+              "const result = responseJson.result;",
+              "console.log('=== STRUCTURED SOLICITATION VALIDATION ===');",
+              "console.log('Solicitation ID:', result.solicitation_id);",
+              "console.log('Award Title:', result.award_title);",
+              "console.log('Funding Ceiling:', result.funding_ceiling);",
+              "console.log('Project Duration:', result.project_duration_months, 'months');",
+              "console.log('PI Eligibility Rules:', result.pi_eligibility_rules?.length || 0, 'rules');",
+              "console.log('Required Skills:', result.required_scientific_skills?.length || 0, 'skills');",
+              "console.log('Extracted Sections:', Object.keys(result.extracted_sections || {}).length, 'sections');",
+              "console.log('Full Text Length:', result.full_text?.length || 0, 'characters');",
+              "console.log('Processing Time:', result.processing_time_seconds, 'seconds');",
+              "console.log('========================================');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/jobs/{{job_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["jobs", "{{job_id}}"]
+        },
+        "description": "Comprehensive validation of the structured solicitation result. This request validates that the deconstruction process produced a complete StructuredSolicitation object with all required fields."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Cleanup Job (Optional)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Test that cleanup was successful",
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Cleanup message received', function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.have.property('message');",
+              "    pm.expect(responseJson.message).to.include('cleaned up successfully');",
+              "});",
+              "",
+              "console.log('Job cleanup completed for job_id:', pm.environment.get('job_id'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/jobs/{{job_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["jobs", "{{job_id}}"]
+        },
+        "description": "Optional cleanup of job data after testing. This removes the job from Redis storage."
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection-level pre-request script",
+          "console.log('=== NSF Solicitation Deconstruction API Test ===');",
+          "console.log('Base URL:', pm.environment.get('base_url'));",
+          "console.log('Current Job ID:', pm.environment.get('job_id') || 'Not set');",
+          "console.log('===============================================');"
+        ]
+      }
+    }
+  ]
+}

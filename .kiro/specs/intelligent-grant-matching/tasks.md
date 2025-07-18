@@ -44,21 +44,21 @@
     - Validate section extraction accuracy with sample solicitations
     - _Requirements: 4.3, 3.3_
 
-  - [ ] 3.4 Create StructuredSolicitation data model and validation
+  - [x] 3.4 Create StructuredSolicitation data model and validation
     - Write tests for Pydantic model validation and serialization
     - Implement StructuredSolicitation model with all required fields
     - Test JSON serialization/deserialization for Redis storage
     - Validate model constraints and field validation rules
     - _Requirements: 4.5, 3.3_
 
-  - [ ] 3.5 Build LLM integration for metadata extraction
+  - [x] 3.5 Build LLM integration for metadata extraction
     - Write tests for _extract_metadata_with_llm() with mocked LLM responses
     - Implement LLM API calls for section-specific data extraction
     - Create prompt templates for eligibility rules, funding details, skills
     - Test LLM response parsing and error handling
     - _Requirements: 4.4, 2.5_
 
-  - [ ] 3.6 Implement complete deconstruct_solicitation_task
+  - [x] 3.6 Implement complete deconstruct_solicitation_task
     - Write integration test for full task execution with mocked dependencies
     - Implement task orchestration: PDF extraction → chunking → LLM processing → assembly
     - Add comprehensive error handling and job status updates
@@ -66,14 +66,28 @@
     - _Requirements: 4.2, 4.3, 4.4, 4.5, 2.1_
 
 - [ ] 4. Create Milestone 1 Postman testing workflow
-  - [ ] 4.1 Build Postman collection for solicitation deconstruction
+  - [x] 4.1 Build Postman collection for solicitation deconstruction
     - Create "Upload PDF" request with sample NSF solicitation file
     - Add "Check Job Status" request with polling automation
     - Include Redis debugging commands for manual verification
     - Test complete workflow: upload → poll → validate structured result
+    - **FIXED ISSUES DURING IMPLEMENTATION:**
+      - ✅ Switched LLM model from `llama-3.3-70b-versatile` to `meta-llama/llama-4-scout-17b-16e-instruct` (rate limit fix)
+      - ✅ Implemented actual background task processing (was placeholder)
+      - ✅ Fixed job manager API to use separate `store_job_result()` method
+      - ✅ Updated API routes to include `/api` prefix
+      - ✅ Added Redis installation and setup requirements
     - _Requirements: 1.3, 2.6_
 
-  - [ ] 4.2 Validate Milestone 1 integration and error scenarios
+  - [x] 4.1.5 Containerize the solicitation deconstruction API with OrbStack
+    - Create comprehensive Dockerfile with all dependencies
+    - Set up docker-compose.yml with Redis service
+    - Configure environment variables for containerized deployment
+    - Test complete workflow in OrbStack environment with Postman
+    - Document OrbStack setup and usage instructions
+    - _Requirements: 1.3, 2.6, 4.7_
+
+  - [x] 4.2 Validate Milestone 1 integration and error scenarios
     - Test invalid PDF uploads and error handling
     - Verify job failure scenarios and error message clarity
     - Test concurrent PDF uploads and queue management
