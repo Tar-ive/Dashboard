@@ -329,7 +329,7 @@ class DreamTeamReport(BaseModel):
 
 ## 🚀 What's Next
 
-### Immediate Next Steps (July 2025)
+### Immediate Next Steps (August 2025)
 
 1. **Complete PDF Processing Pipeline**
    - Finalize PyMuPDF integration
@@ -346,7 +346,7 @@ class DreamTeamReport(BaseModel):
    - Performance testing and optimization
    - User acceptance testing with sample solicitations
 
-### Future Enhancements (August 2025)
+### Future Enhancements (Q4 2025)
 
 1. **Dream Team Assembly**
    - Researcher database integration
@@ -390,6 +390,80 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 - **Documentation**: http://localhost:8000/docs (when running locally)
 - **Issues**: [GitHub Issues](https://github.com/Tar-ive/Dashboard/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/Tar-ive/Dashboard/discussions)
+
+---
+
+## 🏗️ How This Project Was Built
+
+### AI-Powered Development with Kiro
+
+This project showcases the power of **spec-driven development** using Kiro, an AI-powered development assistant that goes beyond simple code generation to provide true architectural guidance and workflow automation.
+
+#### The Challenge: Building Complex Software Right
+
+Building complex software is more than just writing code; it's about architecture, planning, and maintainability. Traditional AI coding assistants are great at generating snippets, but they often miss the bigger picture. That's where Kiro's spec-driven development became a complete game-changer.
+
+Instead of just "vibe coding" my way through a complex project, I used Kiro to architect, plan, and build this entire Intelligent Grant Matching Engine—a sophisticated system for analyzing NSF grant solicitations and assembling optimal research teams.
+
+#### The Spec-Driven Methodology 🗺️
+
+Rather than jumping straight into code, development started with creating a comprehensive **spec** consisting of three key files:
+
+1. **`requirements.md`**: Defines what to build using clear user stories
+   ```
+   User Story: As a user, I want to upload a solicitation PDF and receive 
+   a structured JSON object containing its key requirements, rules, and 
+   scientific objectives, so that I can have machine-readable solicitation 
+   data for further processing.
+   ```
+
+2. **`design.md`**: Outlines how to build it with detailed technical design, architecture, data models, API endpoints, and testing strategy
+
+3. **`tasks.md`**: Creates an executable plan breaking the entire design into granular, step-by-step coding tasks
+   ```markdown
+   - [x] 1. Set up FastAPI + RQ + Redis infrastructure foundation
+   - [x] 2. Implement core job management API endpoints
+   - [🔄] 3. Implement Milestone 1: Solicitation Deconstruction Task
+     - [x] 3.1 Create POST /deconstruct endpoint with TDD approach
+     - [x] 3.2 Build PDF text extraction as pure function
+     - [ ] 3.3 Implement section chunking logic as pure function
+   ```
+
+#### Automated Workflow with Agent Hooks 🤖
+
+Kiro's Agent Hooks created a team of specialized AI assistants working in the background:
+
+**1. Backend Over-Engineering Mitigator**
+- Triggers automated code reviews when Python files are saved
+- Acts like a senior engineer analyzing for unnecessary complexity
+- Prevents architectural debt before it accumulates
+
+**2. Python Documentation Sync**
+- Automatically updates README.md and documentation when code changes
+- Eliminates the pain of outdated documentation
+- Keeps project documentation perfectly synchronized with implementation
+
+**3. Git Auto Commit**
+- Automatically stages and commits changes with timestamped messages
+- Removes mental friction of constant manual commits
+- Maintains clean development history
+
+#### The Result: True Agentic Software Engineering
+
+Using Kiro felt less like "prompting an AI" and more like "orchestrating an intelligent development process." The spec-driven methodology enforced clarity and discipline, while agentic features automated tedious and repetitive tasks.
+
+**Key Benefits Achieved:**
+- ✅ **Clear Architecture**: Well-defined system design from day one
+- ✅ **High Code Quality**: Automated reviews prevent technical debt
+- ✅ **Always-Current Documentation**: Automated sync eliminates outdated docs
+- ✅ **Methodical Development**: Task-driven approach ensures nothing is missed
+- ✅ **Maintainable Codebase**: Structured approach creates sustainable code
+
+This represents a fundamental shift from simple coding assistance to true, full-cycle, agentic software engineering.
+
+#### Learn More About Kiro
+
+Interested in spec-driven development? Learn more about Kiro at [kiro.ai](https://kiro.dev)
 
 ---
 
