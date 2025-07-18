@@ -1,14 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import solicitations, matching, teams  # Add teams import
+from app.api import solicitations, matching, teams, reports
+from app.config import settings
 
 app = FastAPI(
-    title="NSF Researcher Matching API",
-    description="API for matching researchers to NSF solicitations and assembling dream teams",
-    version="1.0.0"
+    title=settings.API_TITLE,
+    version=settings.API_VERSION,
+    debug=settings.DEBUG
 )
 
-# CORS middleware for frontend integration
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Configure for production
@@ -17,10 +18,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(solicitations.router, prefix="/api/v1")
-app.include_router(matching.router, prefix="/api/v1")
-app.include_router(teams.router, prefix="/api/v1")  # Add this line
+# Include routers with simplified prefix
+app.include_router(solicitations.router, prefix="/api")
+app.include_router(matching.router, prefix="/api")
+app.include_router(teams.router, prefix="/api")
+app.include_router(reports.router, prefix="/api")
 
 @app.get("/")
 def health_check():
@@ -32,7 +34,8 @@ def health_check():
             "pdf_upload", 
             "text_extraction", 
             "researcher_matching", 
-            "dream_team_assembly"  # Added
+            "dream_team_assembly",
+            "ai_powered_reports"  # Added
         ]
     }
 
@@ -40,7 +43,6 @@ def health_check():
 def detailed_health():
     return {
         "api_status": "ready",
-        "database": "connected",
-        "ml_models": "loaded",
-        "version": "1.0.0"
+        "anthropic_configured": bool(settings.ANTHROPIC_API_KEY),
+        "version": settings.API_VERSION
     }

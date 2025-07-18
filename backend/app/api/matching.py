@@ -1,16 +1,14 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from app.models.matching import MatchingRequest, MatchingResults, MatchingStatus
 from app.services.matching_service import MatchingService
-from app.services.pdf_service import PDFService
+from app.utils import extract_pdf_text
 import os
 from typing import Dict
 
 router = APIRouter(prefix="/matching", tags=["matching"])
 matching_service = MatchingService()
-pdf_service = PDFService()
 
-# In-memory storage for demo (use Redis/DB in production)
-matching_sessions: Dict[str, Dict] = {}
+from app.state import matching_sessions
 
 @router.get("/")
 def matching_info():
@@ -78,7 +76,7 @@ async def process_matching_background(session_id: str, request: MatchingRequest)
         file_path = os.path.join(upload_dir, matching_files[0])
         
         # Extract solicitation data
-        solicitation_analysis = pdf_service.extract_and_analyze(file_path)
+        solicitation_analysis = extract_pdf_text(file_path)
         solicitation_analysis['solicitation_id'] = session_id
         
         # Update status

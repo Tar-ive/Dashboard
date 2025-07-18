@@ -109,10 +109,10 @@ Dashboard/
 - `GET /health` - Detailed health status
 
 #### Solicitations API
-- `GET /api/v1/solicitations/` - List all solicitations
-- `POST /api/v1/solicitations/upload` - Upload PDF solicitation
-- `POST /api/v1/solicitations/{solicitation_id}/analyze` - Analyze solicitation
-- `GET /api/v1/solicitations/{solicitation_id}` - Get solicitation details
+- `GET /solicitations/` - List all solicitations
+- `POST /solicitations/upload` - Upload PDF solicitation
+- `POST /solicitations/{solicitation_id}/analyze` - Analyze solicitation
+- `GET /solicitations/{solicitation_id}` - Get solicitation details
 
 #### Matching API
 - `GET /api/v1/matching/` - Get matching service info
@@ -134,7 +134,7 @@ Dashboard/
 
 #### Upload Solicitation
 ```bash
-curl -X POST "http://localhost:8000/api/v1/solicitations/upload" \
+curl -X POST "http://localhost:8000/solicitations/upload" \
   -H "Content-Type: multipart/form-data" \
   -F "file=@solicitation.pdf"
 ```
@@ -176,11 +176,18 @@ curl -X POST "http://localhost:8000/api/v1/teams/assemble" \
 ## 🔧 Services Architecture
 
 ### Core Services
-1. **PDFService**: Handles PDF upload and text extraction
+1. **PDF Processing Utilities**: Utility functions for PDF text extraction and analysis
 2. **MatchingService**: Implements hybrid search algorithms
 3. **DreamTeamService**: Optimizes team composition
 4. **AnalysisService**: Performs solicitation analysis
 5. **StorageService**: Manages data persistence
+
+### Configuration System
+The application uses a simplified configuration system that:
+- Loads settings from environment variables using `os.getenv()`
+- Supports `.env` files for local development
+- Automatically creates required directories on startup
+- Provides sensible defaults for all configuration options
 
 ### Processing Pipeline
 1. **PDF Upload** → Text Extraction → Content Analysis
@@ -203,6 +210,16 @@ jupyter notebook
 
 ## 🧪 Testing
 
+The project uses a simplified, pragmatic testing approach that starts minimal and grows with complexity as needed.
+
+### Current Test Infrastructure
+
+The testing framework currently provides:
+- **Basic Test Client**: FastAPI test client for API endpoint testing
+- **Temporary File System**: Isolated temporary directories for file-based tests
+- **Sample Test Data**: Basic PDF content fixtures for upload testing
+- **Pytest Configuration**: Comprehensive test configuration with coverage reporting
+
 ### Run Tests
 ```bash
 cd backend
@@ -213,6 +230,105 @@ python -m pytest tests/
 ```bash
 python -m pytest --cov=app tests/
 ```
+
+### Test Coverage Report
+```bash
+# Generate HTML coverage report
+python -m pytest --cov=app --cov-report=html tests/
+
+# View coverage report
+open htmlcov/index.html
+```
+
+### Test Categories
+The project supports multiple test categories through pytest markers:
+- `unit`: Unit tests for individual components
+- `integration`: Integration tests for component interactions  
+- `e2e`: End-to-end tests for complete workflows
+- `performance`: Performance and load tests
+- `golden`: Ground-truth validation tests
+- `slow`: Tests that take longer to run
+- `external`: Tests that require external services
+
+### Running Specific Test Categories
+```bash
+# Run only unit tests
+python -m pytest -m unit
+
+# Run integration tests
+python -m pytest -m integration
+
+# Skip slow tests
+python -m pytest -m "not slow"
+```
+
+### Test Development Philosophy
+
+The testing approach follows these principles:
+1. **Start Simple**: Begin with basic fixtures and grow complexity as needed
+2. **Pragmatic Coverage**: Focus on critical paths and business logic
+3. **Fast Feedback**: Prioritize fast-running tests for development workflow
+4. **Realistic Data**: Use meaningful test data that reflects real-world scenarios
+5. **Isolated Tests**: Each test runs independently with proper cleanup
+
+### Current Test Infrastructure Details
+
+The simplified test configuration (`backend/tests/conftest.py`) provides:
+
+```python
+@pytest.fixture
+def test_client():
+    """Create a test client."""
+    return TestClient(app)
+
+@pytest.fixture
+def temp_dir():
+    """Create temporary directory for test files."""
+    temp_path = tempfile.mkdtemp()
+    yield temp_path
+    shutil.rmtree(temp_path, ignore_errors=True)
+
+@pytest.fixture
+def sample_pdf_content():
+    """Sample PDF content for testing."""
+    return b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n"
+```
+
+### Writing Tests
+
+Example test structure:
+
+```python
+def test_api_endpoint(test_client):
+    """Test API endpoint with basic client."""
+    response = test_client.get("/health")
+    assert response.status_code == 200
+
+def test_file_processing(temp_dir, sample_pdf_content):
+    """Test file processing with temporary directory."""
+    pdf_path = Path(temp_dir) / "test.pdf"
+    pdf_path.write_bytes(sample_pdf_content)
+    
+    # Test file processing logic
+    assert pdf_path.exists()
+```
+
+### Future Testing Enhancements
+
+As the project grows, the testing infrastructure will expand to include:
+- Advanced fixture management for complex test scenarios
+- Mock services for external dependencies
+- Performance benchmarking and load testing
+- Ground-truth validation against historical data
+- Automated test data generation
+
+### Testing Best Practices
+
+1. **Keep Tests Simple**: Start with basic assertions and grow complexity as needed
+2. **Use Descriptive Names**: Test names should clearly describe what is being tested
+3. **Isolate Tests**: Each test should be independent and not rely on other tests
+4. **Test Edge Cases**: Include tests for boundary conditions and error scenarios
+5. **Maintain Fast Feedback**: Prioritize fast-running tests for development workflow
 
 ## 📈 Performance & Scalability
 

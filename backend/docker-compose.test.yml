@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  test-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    environment:
+      - TESTING=true
+      - DATABASE_URL=sqlite:///./test.db
+      - UPLOAD_DIR=/app/test_uploads
+      - MODEL_DIR=/app/test_models
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./tests:/app/tests
+      - ./htmlcov:/app/htmlcov
+      - ./coverage.xml:/app/coverage.xml
+      - ./pytest-report.xml:/app/pytest-report.xml
+    command: >
+      sh -c "
+        mkdir -p test_uploads test_models test_outputs &&
+        python -m pytest tests/ --cov=app --cov-report=html --cov-report=xml --junitxml=pytest-report.xml -v
+      "
+    networks:
+      - test-network
+
+  test-db:
+    image: sqlite:latest
+    environment:
+      - SQLITE_DATABASE=test.db
+    volumes:
+      - test-db-data:/data
+    networks:
+      - test-network
+
+  test-lint:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    command: >
+      sh -c "
+        black --check --diff app/ tests/ &&
+        isort --check-only --diff app/ tests/ &&
+        flake8 app/ tests/ &&
+        mypy app/ --ignore-missing-imports
+      "
+    networks:
+      - test-network
+
+  test-security:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    command: >
+      sh -c "
+        bandit -r app/ -f json -o bandit-report.json || true &&
+        safety check --json --output safety-report.json || true
+      "
+    volumes:
+      - ./bandit-report.json:/app/bandit-report.json
+      - ./safety-report.json:/app/safety-report.json
+    networks:
+      - test-network
+
+volumes:
+  test-db-data:
+
+networks:
+  test-network:
+    driver: bridge

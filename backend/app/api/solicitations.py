@@ -1,13 +1,11 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
-from app.models.solicitation import SolicitationResponse, SolicitationAnalysis, SolicitationError
-from app.services.pdf_service import PDFService
+from app.models.solicitation import SolicitationResponse, SolicitationAnalysis
+from app.utils import extract_pdf_text
 from datetime import datetime
 import uuid
 import os
 
 router = APIRouter(prefix="/solicitations", tags=["solicitations"])
-pdf_service = PDFService()
 
 @router.get("/")
 def list_solicitations():
@@ -75,8 +73,8 @@ def analyze_solicitation(solicitation_id: str):
         file_path = os.path.join(upload_dir, matching_files[0])
         original_filename = matching_files[0].split("_", 1)[1]  # Remove UUID prefix
         
-        # Extract text using PDF service
-        analysis_result = pdf_service.extract_and_analyze(file_path)
+        # Extract text using utility function
+        analysis_result = extract_pdf_text(file_path)
         
         return SolicitationAnalysis(
             solicitation_id=solicitation_id,

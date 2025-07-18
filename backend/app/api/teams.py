@@ -9,8 +9,7 @@ from typing import Dict
 router = APIRouter(prefix="/teams", tags=["dream_teams"])
 dream_team_service = DreamTeamService()
 
-# In-memory storage for demo (use Redis/DB in production)
-team_sessions: Dict[str, Dict] = {}
+from app.state import team_sessions
 
 @router.get("/")
 def teams_info():
@@ -31,8 +30,7 @@ def teams_info():
 def assemble_dream_team(request: DreamTeamRequest):
     """Assemble a dream team from matching results"""
     
-    # Import here to avoid circular imports
-    from app.api.matching import matching_sessions
+    from app.state import matching_sessions
     
     # Check if matching results exist
     if request.solicitation_id not in matching_sessions:
