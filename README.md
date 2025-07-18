@@ -463,7 +463,7 @@ This represents a fundamental shift from simple coding assistance to true, full-
 
 #### Learn More About Kiro
 
-Interested in spec-driven development? Learn more about Kiro at [kiro.ai](https://kiro.dev)
+Interested in spec-driven development? Learn more about Kiro at [kiro.dev](https://kiro.dev)
 
 ---
 
