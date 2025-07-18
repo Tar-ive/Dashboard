@@ -1,249 +1,168 @@
-"""
-Basic infrastructure tests that don't depend on the full application.
-
-These tests verify that the core test infrastructure components work
-without requiring all application dependencies.
-"""
+"""Basic infrastructure integration tests."""
 
 import pytest
-import tempfile
-import os
-from pathlib import Path
-from tests.utils import TestDataGenerator, TestFileManager, AssertionHelpers
+from unittest.mock import patch, MagicMock
+from app.jobs.redis_connection import get_redis
+from app.jobs.worker_config import get_queue_manager
+from app.jobs.job_manager import get_job_manager
+from app.models.job import JobStatus
+import time
 
-
-@pytest.mark.unit
-def test_pytest_configuration():
-    """Test that pytest is properly configured."""
-    # This test verifies basic pytest functionality
-    assert True
-
-
-@pytest.mark.unit
-def test_test_data_generator():
-    """Test the TestDataGenerator utility."""
-    # Test PDF content generation
-    pdf_content = TestDataGenerator.create_sample_pdf_content()
-    assert isinstance(pdf_content, bytes)
-    assert pdf_content.startswith(b"%PDF")
+class TestBasicInfrastructure:
+    """Test basic infrastructure integration."""
     
-    # Test solicitation data generation
-    solicitation_data = TestDataGenerator.create_solicitation_data()
-    assert "title" in solicitation_data
-    assert "program" in solicitation_data
+    @pytest.fixture
+    def mock_redis_infrastructure(self):
+        """Mock the entire Redis infrastructure for integration testing."""
+        with patch('app.jobs.redis_connection.redis.Redis') as mock_redis_class:
+            # Create a mock Redis instance
+            mock_redis = MagicMock()
+            mock_redis_class.return_value = mock_redis
+            mock_redis.ping.return_value = True
+            
+            # Mock Redis operations
+            redis_data = {}
+            
+            def mock_set(key, value):
+                redis_data[key] = value
+                return True
+            
+            def mock_get(key):
+                return redis_data.get(key)
+            
+            def mock_delete(key):
+                if key in redis_data:
+                    del redis_data[key]
+                return True
+            
+            mock_redis.set.side_effect = mock_set
+            mock_redis.get.side_effect = mock_get
+            mock_redis.delete.side_effect = mock_delete
+            
+            yield mock_redis, redis_data
     
-    # Test researcher data generation
-    researcher_data = TestDataGenerator.create_researcher_data()
-    assert "name" in researcher_data
-    assert "email" in researcher_data
-
-
-@pytest.mark.unit
-def test_test_file_manager():
-    """Test the TestFileManager utility."""
-    manager = TestFileManager()
-    
-    # Test temporary directory creation
-    temp_dir = manager.create_temp_dir()
-    assert temp_dir.exists()
-    assert temp_dir.is_dir()
-    
-    # Test temporary file creation
-    temp_file = manager.create_temp_file("test content")
-    assert temp_file.exists()
-    assert temp_file.read_text() == "test content"
-    
-    # Test PDF creation
-    pdf_file = manager.create_sample_pdf()
-    assert pdf_file.exists()
-    assert pdf_file.suffix == ".pdf"
-    
-    # Test cleanup
-    manager.cleanup()
-    assert not temp_dir.exists()
-    assert not temp_file.exists()
-    assert not pdf_file.exists()
-
-
-@pytest.mark.unit
-def test_assertion_helpers():
-    """Test the AssertionHelpers utility."""
-    # Test response structure assertion
-    response_data = {"key1": "value1", "key2": "value2"}
-    AssertionHelpers.assert_response_structure(response_data, ["key1", "key2"])
-    
-    # Test score range assertion
-    AssertionHelpers.assert_score_range(0.5)
-    AssertionHelpers.assert_score_range(0.0)
-    AssertionHelpers.assert_score_range(1.0)
-    
-    # Test email validation
-    AssertionHelpers.assert_valid_email("test@example.com")
-    
-    # Test error cases
-    with pytest.raises(AssertionError):
-        AssertionHelpers.assert_response_structure(response_data, ["missing_key"])
-    
-    with pytest.raises(AssertionError):
-        AssertionHelpers.assert_score_range(-0.1)
-    
-    with pytest.raises(AssertionError):
-        AssertionHelpers.assert_valid_email("invalid-email")
-
-
-@pytest.mark.unit
-def test_environment_setup():
-    """Test environment setup for testing."""
-    # Test that we can set and read environment variables
-    test_env_var = "TEST_INFRASTRUCTURE_VAR"
-    test_value = "test_value_123"
-    
-    os.environ[test_env_var] = test_value
-    assert os.environ.get(test_env_var) == test_value
-    
-    # Clean up
-    del os.environ[test_env_var]
-
-
-@pytest.mark.unit
-def test_temporary_file_system():
-    """Test temporary file system operations."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
+    def test_complete_job_lifecycle(self, mock_redis_infrastructure):
+        """Test complete job lifecycle: create -> update -> complete -> cleanup."""
+        mock_redis, redis_data = mock_redis_infrastructure
         
-        # Test directory creation
-        test_dir = temp_path / "test_subdir"
-        test_dir.mkdir()
-        assert test_dir.exists()
+        # Clear any existing Redis instance
+        from app.jobs.redis_connection import RedisConnection
+        RedisConnection._instance = None
         
-        # Test file creation
-        test_file = test_dir / "test_file.txt"
-        test_file.write_text("test content")
-        assert test_file.exists()
-        assert test_file.read_text() == "test content"
-
-
-@pytest.mark.integration
-def test_test_markers():
-    """Test that pytest markers are working."""
-    # This test has the 'integration' marker
-    # If markers are working, this test should be discoverable
-    assert True
-
-
-@pytest.mark.performance
-def test_performance_timing():
-    """Test performance timing capabilities."""
-    import time
-    
-    start_time = time.time()
-    time.sleep(0.001)  # Sleep for 1ms
-    elapsed = time.time() - start_time
-    
-    assert elapsed >= 0.001
-    assert elapsed < 0.1  # Should be much less than 100ms
-
-
-@pytest.mark.slow
-def test_slow_test_marker():
-    """Test that slow test marker works."""
-    import time
-    
-    # This test is marked as slow
-    time.sleep(0.01)  # Sleep for 10ms
-    assert True
-
-
-@pytest.mark.unit
-def test_coverage_tracking():
-    """Test that coverage tracking is working."""
-    # Import and use test utilities to ensure they're covered
-    from tests.test_config import test_config, SAMPLE_DATA
-    
-    assert test_config is not None
-    assert SAMPLE_DATA is not None
-    assert "solicitation" in SAMPLE_DATA
-    assert "researcher" in SAMPLE_DATA
-
-
-@pytest.mark.unit
-class TestInfrastructureComponents:
-    """Test class to verify class-based test organization."""
-    
-    def test_class_based_tests(self):
-        """Test that class-based tests work."""
-        assert True
-    
-    def test_multiple_assertions(self):
-        """Test multiple assertions in one test."""
-        data = {"a": 1, "b": 2, "c": 3}
+        # 1. Create a job
+        job_manager = get_job_manager()
+        job_id = job_manager.create_job("test_job")
+        assert job_id is not None
+        assert len(job_id) == 36  # UUID format
         
-        assert "a" in data
-        assert data["a"] == 1
-        assert len(data) == 3
-        assert isinstance(data, dict)
+        # Verify job metadata was stored
+        metadata_key = f"job:{job_id}:metadata"
+        assert metadata_key in redis_data
+        
+        # 2. Update job status to processing
+        job_manager.update_job_status(job_id, JobStatus.PROCESSING, progress=50)
+        
+        # 3. Get job status
+        status = job_manager.get_job_status(job_id)
+        assert status is not None
+        assert status.job_id == job_id
+        assert status.status == JobStatus.PROCESSING
+        assert status.progress == 50
+        
+        # 4. Store job result
+        test_result = {"output": "test data", "success": True}
+        job_manager.store_job_result(job_id, test_result)
+        
+        # 5. Get final status
+        final_status = job_manager.get_job_status(job_id)
+        assert final_status.status == JobStatus.COMPLETED
+        assert final_status.result == test_result
+        
+        # 6. Cleanup job
+        job_manager.cleanup_job(job_id)
+        
+        # Verify cleanup
+        final_status_after_cleanup = job_manager.get_job_status(job_id)
+        assert final_status_after_cleanup is None
     
-    @pytest.mark.parametrize("input_value,expected", [
-        (1, 2),
-        (2, 4),
-        (3, 6),
-        (0, 0)
-    ])
-    def test_parametrized_test(self, input_value, expected):
-        """Test parametrized test functionality."""
-        result = input_value * 2
-        assert result == expected
-
-
-@pytest.mark.unit
-def test_fixture_isolation():
-    """Test that fixtures provide proper isolation."""
-    # This test verifies that each test gets fresh fixtures
-    # In a real scenario, this would test database isolation
-    temp_data = {"counter": 0}
-    temp_data["counter"] += 1
+    def test_job_error_handling(self, mock_redis_infrastructure):
+        """Test job error handling and storage."""
+        mock_redis, redis_data = mock_redis_infrastructure
+        
+        # Clear any existing Redis instance
+        from app.jobs.redis_connection import RedisConnection
+        RedisConnection._instance = None
+        
+        # Create a job
+        job_manager = get_job_manager()
+        job_id = job_manager.create_job("test_job")
+        
+        # Store an error
+        job_manager.store_job_error(job_id, "processing_error", "Test error message")
+        
+        # Verify error was stored and status updated
+        status = job_manager.get_job_status(job_id)
+        assert status.status == JobStatus.FAILED
+        assert status.error_message == "Test error message"
+        
+        # Verify error key exists
+        error_key = f"job:{job_id}:error"
+        assert error_key in redis_data
     
-    assert temp_data["counter"] == 1
-
-
-@pytest.mark.unit
-def test_exception_handling():
-    """Test exception handling in tests."""
-    def divide_by_zero():
-        return 1 / 0
+    def test_queue_manager_integration(self, mock_redis_infrastructure):
+        """Test queue manager integration with mocked Redis."""
+        mock_redis, redis_data = mock_redis_infrastructure
+        
+        # Clear any existing Redis instance
+        from app.jobs.redis_connection import RedisConnection
+        RedisConnection._instance = None
+        
+        with patch('rq.Queue') as mock_queue_class:
+            mock_queue = MagicMock()
+            mock_queue_class.return_value = mock_queue
+            
+            # Create queue manager
+            from app.jobs.worker_config import QueueManager
+            manager = QueueManager()
+            
+            # Test job enqueueing
+            mock_job = MagicMock()
+            mock_job.id = "test-job-123"
+            mock_queue.enqueue.return_value = mock_job
+            
+            def dummy_task():
+                return "completed"
+            
+            job = manager.enqueue_job(dummy_task, job_id="test-job-123")
+            assert job.id == "test-job-123"
+            mock_queue.enqueue.assert_called_once()
     
-    with pytest.raises(ZeroDivisionError):
-        divide_by_zero()
+    def test_redis_connection_error_handling(self):
+        """Test Redis connection error handling."""
+        # Clear any existing Redis instance
+        from app.jobs.redis_connection import RedisConnection
+        RedisConnection._instance = None
+        
+        with patch('app.jobs.redis_connection.redis.Redis') as mock_redis_class:
+            # Simulate connection failure
+            mock_redis_class.side_effect = Exception("Connection failed")
+            
+            with pytest.raises(Exception, match="Connection failed"):
+                get_redis()
     
-    # Test that we can catch specific exception messages
-    with pytest.raises(ValueError, match="invalid literal"):
-        int("not_a_number")
-
-
-@pytest.mark.unit
-def test_test_data_consistency():
-    """Test that test data generation is consistent."""
-    # Generate data multiple times and verify consistency
-    data1 = TestDataGenerator.create_solicitation_data(title="Test Title")
-    data2 = TestDataGenerator.create_solicitation_data(title="Test Title")
-    
-    # Should have same title but potentially different other fields
-    assert data1["title"] == data2["title"]
-    assert data1["title"] == "Test Title"
-
-
-@pytest.mark.unit
-def test_path_operations():
-    """Test path operations for test infrastructure."""
-    # Test that we can work with paths correctly
-    current_file = Path(__file__)
-    assert current_file.exists()
-    assert current_file.name == "test_basic_infrastructure.py"
-    
-    # Test parent directory
-    test_dir = current_file.parent
-    assert test_dir.name == "tests"
-    
-    # Test backend directory
-    backend_dir = test_dir.parent
-    assert backend_dir.name == "backend"
+    def test_job_manager_with_missing_job(self, mock_redis_infrastructure):
+        """Test job manager behavior with non-existent jobs."""
+        mock_redis, redis_data = mock_redis_infrastructure
+        
+        # Clear any existing Redis instance
+        from app.jobs.redis_connection import RedisConnection
+        RedisConnection._instance = None
+        
+        # Try to get status for non-existent job
+        job_manager = get_job_manager()
+        status = job_manager.get_job_status("nonexistent-job")
+        assert status is None
+        
+        # Try to update status for non-existent job (should not crash)
+        job_manager.update_job_status("nonexistent-job", JobStatus.PROCESSING)
+        # Should log error but not raise exception

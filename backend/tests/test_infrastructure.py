@@ -1,373 +1,356 @@
-"""
-Test infrastructure validation tests.
-
-These tests verify that the test infrastructure is properly configured
-and all fixtures and utilities are working correctly.
-"""
+"""Infrastructure tests for Redis connectivity and job enqueueing."""
 
 import pytest
-import tempfile
-from pathlib import Path
-from fastapi.testclient import TestClient
+import redis
+from unittest.mock import patch, MagicMock
+from app.jobs.redis_connection import RedisConnection, get_redis
+from app.jobs.worker_config import QueueManager, create_worker
+from app.jobs.job_manager import JobManager
+from app.models.job import JobStatus, JobMetadata
+from datetime import datetime
+import json
 
-from tests.utils import TestDataGenerator, MockServices, TestFileManager, AssertionHelpers
-
-
-@pytest.mark.unit
-def test_test_settings_fixture(test_settings):
-    """Test that test settings fixture works correctly."""
-    assert test_settings.testing is True
-    assert "test" in test_settings.database_url
-    assert test_settings.upload_dir is not None
-    assert test_settings.model_dir is not None
-
-
-@pytest.mark.unit
-def test_test_db_engine_fixture(test_db_engine):
-    """Test that test database engine fixture works correctly."""
-    assert test_db_engine is not None
-    # Test that we can execute a simple query
-    with test_db_engine.connect() as conn:
-        result = conn.execute("SELECT 1")
-        assert result.fetchone()[0] == 1
-
-
-@pytest.mark.unit
-def test_test_db_session_fixture(test_db_session):
-    """Test that test database session fixture works correctly."""
-    assert test_db_session is not None
-    # Test that session is functional
-    result = test_db_session.execute("SELECT 1").fetchone()
-    assert result[0] == 1
-
-
-@pytest.mark.unit
-def test_test_file_system_fixture(test_file_system):
-    """Test that test file system fixture works correctly."""
-    assert "temp_dir" in test_file_system
-    assert "upload_dir" in test_file_system
-    assert "model_dir" in test_file_system
-    assert "output_dir" in test_file_system
+class TestRedisConnection:
+    """Test Redis connection management."""
     
-    # Verify directories exist
-    for dir_path in [test_file_system["upload_dir"], test_file_system["model_dir"], test_file_system["output_dir"]]:
-        assert Path(dir_path).exists()
-        assert Path(dir_path).is_dir()
-
-
-@pytest.mark.integration
-def test_test_client_fixture(test_client):
-    """Test that test client fixture works correctly."""
-    assert isinstance(test_client, TestClient)
-    
-    # Test basic health check if available
-    response = test_client.get("/")
-    # Should not raise an exception, status code may vary based on implementation
-    assert response is not None
-
-
-@pytest.mark.unit
-def test_sample_pdf_file_fixture(sample_pdf_file):
-    """Test that sample PDF file fixture works correctly."""
-    pdf_path = Path(sample_pdf_file)
-    assert pdf_path.exists()
-    assert pdf_path.suffix == ".pdf"
-    
-    # Verify file has content
-    assert pdf_path.stat().st_size > 0
-
-
-@pytest.mark.unit
-def test_mock_ai_service_fixture(mock_ai_service):
-    """Test that mock AI service fixture works correctly."""
-    # Test analyze_text method
-    result = mock_ai_service.analyze_text("test text")
-    assert "keywords" in result
-    assert "summary" in result
-    assert "topics" in result
-    
-    # Test generate_embeddings method
-    embeddings = mock_ai_service.generate_embeddings("test text")
-    assert isinstance(embeddings, list)
-    assert len(embeddings) > 0
-
-
-@pytest.mark.unit
-def test_mock_pdf_processor_fixture(mock_pdf_processor):
-    """Test that mock PDF processor fixture works correctly."""
-    # Test extract_text method
-    text = mock_pdf_processor.extract_text("dummy_path.pdf")
-    assert isinstance(text, str)
-    assert len(text) > 0
-    
-    # Test extract_metadata method
-    metadata = mock_pdf_processor.extract_metadata("dummy_path.pdf")
-    assert "title" in metadata
-    assert "author" in metadata
-    assert "pages" in metadata
-
-
-@pytest.mark.unit
-def test_clean_environment_fixture(clean_environment):
-    """Test that clean environment fixture works correctly."""
-    import os
-    
-    # Check that test environment variables are set
-    assert os.environ.get("TESTING") == "true"
-    assert "test" in os.environ.get("DATABASE_URL", "")
-
-
-@pytest.mark.unit
-def test_sample_data_fixtures(sample_solicitation_data, sample_researcher_data, sample_matching_request):
-    """Test that sample data fixtures work correctly."""
-    # Test solicitation data
-    assert "title" in sample_solicitation_data
-    assert "program" in sample_solicitation_data
-    assert "deadline" in sample_solicitation_data
-    
-    # Test researcher data
-    assert "name" in sample_researcher_data
-    assert "email" in sample_researcher_data
-    assert "institution" in sample_researcher_data
-    
-    # Test matching request data
-    assert "solicitation_id" in sample_matching_request
-    assert "max_results" in sample_matching_request
-    assert "min_score" in sample_matching_request
-
-
-@pytest.mark.unit
-def test_performance_timer_fixture(performance_timer):
-    """Test that performance timer fixture works correctly."""
-    import time
-    
-    performance_timer.start()
-    time.sleep(0.01)  # Sleep for 10ms
-    performance_timer.stop()
-    
-    assert performance_timer.elapsed is not None
-    assert performance_timer.elapsed >= 0.01
-    assert performance_timer.elapsed < 0.1  # Should be much less than 100ms
-
-
-@pytest.mark.unit
-class TestTestDataGenerator:
-    """Test the TestDataGenerator utility class."""
-    
-    def test_create_sample_pdf_content(self):
-        """Test PDF content generation."""
-        pdf_content = TestDataGenerator.create_sample_pdf_content()
-        assert isinstance(pdf_content, bytes)
-        assert pdf_content.startswith(b"%PDF")
-        assert b"endobj" in pdf_content
-    
-    def test_create_solicitation_data(self):
-        """Test solicitation data generation."""
-        data = TestDataGenerator.create_solicitation_data()
-        assert "title" in data
-        assert "program" in data
-        assert "deadline" in data
+    def test_redis_connection_singleton(self):
+        """Test that Redis connection uses singleton pattern."""
+        # Clear any existing instance
+        RedisConnection._instance = None
         
-        # Test with custom parameters
-        custom_data = TestDataGenerator.create_solicitation_data(
-            title="Custom Title",
-            program="CUSTOM"
+        with patch('redis.Redis') as mock_redis:
+            mock_instance = MagicMock()
+            mock_redis.return_value = mock_instance
+            mock_instance.ping.return_value = True
+            
+            # Get connection twice
+            conn1 = RedisConnection.get_connection()
+            conn2 = RedisConnection.get_connection()
+            
+            # Should be the same instance
+            assert conn1 is conn2
+            # Redis should only be instantiated once
+            mock_redis.assert_called_once()
+    
+    def test_redis_connection_with_config(self):
+        """Test Redis connection uses correct configuration."""
+        RedisConnection._instance = None
+        
+        with patch('redis.Redis') as mock_redis:
+            mock_instance = MagicMock()
+            mock_redis.return_value = mock_instance
+            mock_instance.ping.return_value = True
+            
+            RedisConnection.get_connection()
+            
+            # Verify Redis was called with correct parameters
+            mock_redis.assert_called_once_with(
+                host='localhost',  # Default from config
+                port=6379,
+                db=0,
+                password=None,
+                decode_responses=True,
+                socket_connect_timeout=5,
+                socket_timeout=5,
+                retry_on_timeout=True
+            )
+    
+    def test_redis_connection_failure(self):
+        """Test Redis connection failure handling."""
+        RedisConnection._instance = None
+        
+        with patch('redis.Redis') as mock_redis:
+            mock_redis.side_effect = redis.ConnectionError("Connection failed")
+            
+            with pytest.raises(redis.ConnectionError):
+                RedisConnection.get_connection()
+    
+    def test_redis_connection_test(self):
+        """Test Redis connection health check."""
+        RedisConnection._instance = None
+        
+        with patch('redis.Redis') as mock_redis:
+            mock_instance = MagicMock()
+            mock_redis.return_value = mock_instance
+            
+            # Test successful connection
+            mock_instance.ping.return_value = True
+            assert RedisConnection.test_connection() is True
+            
+            # Test failed connection
+            mock_instance.ping.side_effect = redis.ConnectionError("Ping failed")
+            assert RedisConnection.test_connection() is False
+    
+    def test_redis_connection_close(self):
+        """Test Redis connection cleanup."""
+        RedisConnection._instance = None
+        
+        with patch('redis.Redis') as mock_redis:
+            mock_instance = MagicMock()
+            mock_redis.return_value = mock_instance
+            mock_instance.ping.return_value = True
+            
+            # Get connection and close it
+            RedisConnection.get_connection()
+            RedisConnection.close_connection()
+            
+            # Instance should be cleared
+            assert RedisConnection._instance is None
+            mock_instance.close.assert_called_once()
+
+class TestQueueManager:
+    """Test RQ queue management."""
+    
+    @pytest.fixture
+    def mock_redis(self):
+        """Mock Redis connection for testing."""
+        with patch('app.jobs.worker_config.get_redis') as mock:
+            mock_conn = MagicMock()
+            mock.return_value = mock_conn
+            yield mock_conn
+    
+    @pytest.fixture
+    def queue_manager(self, mock_redis):
+        """Create QueueManager instance with mocked Redis."""
+        with patch('rq.Queue') as mock_queue_class:
+            mock_queue = MagicMock()
+            mock_queue_class.return_value = mock_queue
+            
+            manager = QueueManager()
+            manager.queue = mock_queue
+            return manager
+    
+    def test_enqueue_job(self, queue_manager):
+        """Test job enqueueing."""
+        mock_job = MagicMock()
+        mock_job.id = "test-job-123"
+        queue_manager.queue.enqueue.return_value = mock_job
+        
+        def dummy_function():
+            return "test"
+        
+        job = queue_manager.enqueue_job(dummy_function, job_id="test-job-123")
+        
+        assert job.id == "test-job-123"
+        queue_manager.queue.enqueue.assert_called_once()
+    
+    def test_enqueue_job_failure(self, queue_manager):
+        """Test job enqueueing failure handling."""
+        queue_manager.queue.enqueue.side_effect = Exception("Enqueue failed")
+        
+        def dummy_function():
+            return "test"
+        
+        with pytest.raises(Exception, match="Enqueue failed"):
+            queue_manager.enqueue_job(dummy_function)
+    
+    def test_get_job(self, queue_manager, mock_redis):
+        """Test job retrieval."""
+        with patch('rq.job.Job.fetch') as mock_fetch:
+            mock_job = MagicMock()
+            mock_fetch.return_value = mock_job
+            
+            job = queue_manager.get_job("test-job-123")
+            
+            assert job is mock_job
+            mock_fetch.assert_called_once_with("test-job-123", connection=mock_redis)
+    
+    def test_get_job_not_found(self, queue_manager, mock_redis):
+        """Test job retrieval when job doesn't exist."""
+        with patch('rq.job.Job.fetch') as mock_fetch:
+            mock_fetch.side_effect = Exception("Job not found")
+            
+            job = queue_manager.get_job("nonexistent-job")
+            
+            assert job is None
+    
+    def test_get_queue_length(self, queue_manager):
+        """Test queue length retrieval."""
+        queue_manager.queue.__len__ = MagicMock(return_value=5)
+        
+        length = queue_manager.get_queue_length()
+        
+        assert length == 5
+    
+    def test_clear_queue(self, queue_manager):
+        """Test queue clearing."""
+        queue_manager.clear_queue()
+        
+        queue_manager.queue.empty.assert_called_once()
+
+class TestJobManager:
+    """Test job state management."""
+    
+    @pytest.fixture
+    def mock_redis(self):
+        """Mock Redis connection for testing."""
+        with patch('app.jobs.job_manager.get_redis') as mock:
+            mock_conn = MagicMock()
+            mock.return_value = mock_conn
+            yield mock_conn
+    
+    @pytest.fixture
+    def job_manager(self, mock_redis):
+        """Create JobManager instance with mocked Redis."""
+        return JobManager()
+    
+    def test_create_job(self, job_manager, mock_redis):
+        """Test job creation."""
+        job_id = job_manager.create_job("test_job")
+        
+        # Should generate a UUID
+        assert len(job_id) == 36  # UUID length
+        assert "-" in job_id
+        
+        # Should store metadata in Redis
+        mock_redis.set.assert_called_once()
+        call_args = mock_redis.set.call_args
+        assert call_args[0][0] == f"job:{job_id}:metadata"
+    
+    def test_create_job_with_custom_id(self, job_manager, mock_redis):
+        """Test job creation with custom ID."""
+        custom_id = "custom-job-123"
+        job_id = job_manager.create_job("test_job", job_id=custom_id)
+        
+        assert job_id == custom_id
+        mock_redis.set.assert_called_once()
+    
+    def test_update_job_status(self, job_manager, mock_redis):
+        """Test job status updates."""
+        # Mock existing job metadata
+        existing_metadata = JobMetadata(
+            job_id="test-job",
+            job_type="test",
+            status=JobStatus.QUEUED,
+            created_at=datetime.utcnow()
         )
-        assert custom_data["title"] == "Custom Title"
-        assert custom_data["program"] == "CUSTOM"
-    
-    def test_create_researcher_data(self):
-        """Test researcher data generation."""
-        data = TestDataGenerator.create_researcher_data()
-        assert "name" in data
-        assert "email" in data
-        assert "institution" in data
+        mock_redis.get.return_value = existing_metadata.model_dump_json()
         
-        # Test with custom parameters
-        custom_data = TestDataGenerator.create_researcher_data(
-            name="Dr. Custom Name",
-            email="custom@test.edu"
+        job_manager.update_job_status("test-job", JobStatus.PROCESSING, progress=50)
+        
+        # Should fetch and update metadata
+        mock_redis.get.assert_called_with("job:test-job:metadata")
+        mock_redis.set.assert_called()
+    
+    def test_store_job_result(self, job_manager, mock_redis):
+        """Test job result storage."""
+        # Mock existing job metadata
+        existing_metadata = JobMetadata(
+            job_id="test-job",
+            job_type="test",
+            status=JobStatus.PROCESSING,
+            created_at=datetime.utcnow()
         )
-        assert custom_data["name"] == "Dr. Custom Name"
-        assert custom_data["email"] == "custom@test.edu"
+        mock_redis.get.return_value = existing_metadata.model_dump_json()
+        
+        result = {"data": "test result"}
+        job_manager.store_job_result("test-job", result)
+        
+        # Should store result and update metadata
+        assert mock_redis.set.call_count >= 2  # Result + metadata
+    
+    def test_get_job_status(self, job_manager, mock_redis):
+        """Test job status retrieval."""
+        # Mock job metadata
+        metadata = JobMetadata(
+            job_id="test-job",
+            job_type="test",
+            status=JobStatus.COMPLETED,
+            progress=100,
+            created_at=datetime.utcnow(),
+            completed_at=datetime.utcnow()
+        )
+        mock_redis.get.side_effect = [
+            metadata.model_dump_json(),  # metadata call
+            json.dumps({"result": "data"})  # result call
+        ]
+        
+        status = job_manager.get_job_status("test-job")
+        
+        assert status is not None
+        assert status.job_id == "test-job"
+        assert status.status == JobStatus.COMPLETED
+        assert status.progress == 100
+    
+    def test_get_job_status_not_found(self, job_manager, mock_redis):
+        """Test job status retrieval for non-existent job."""
+        mock_redis.get.return_value = None
+        
+        status = job_manager.get_job_status("nonexistent-job")
+        
+        assert status is None
+    
+    def test_store_job_error(self, job_manager, mock_redis):
+        """Test job error storage."""
+        # Mock existing job metadata
+        existing_metadata = JobMetadata(
+            job_id="test-job",
+            job_type="test",
+            status=JobStatus.PROCESSING,
+            created_at=datetime.utcnow()
+        )
+        mock_redis.get.return_value = existing_metadata.model_dump_json()
+        
+        job_manager.store_job_error("test-job", "test_error", "Test error message")
+        
+        # Should store error and update status
+        assert mock_redis.set.call_count >= 2  # Error + metadata update
+    
+    def test_cleanup_job(self, job_manager, mock_redis):
+        """Test job cleanup."""
+        job_manager.cleanup_job("test-job")
+        
+        # Should delete all job-related keys
+        expected_keys = [
+            "job:test-job:metadata",
+            "job:test-job:result", 
+            "job:test-job:error"
+        ]
+        
+        assert mock_redis.delete.call_count == len(expected_keys)
+        for key in expected_keys:
+            mock_redis.delete.assert_any_call(key)
 
-
-@pytest.mark.unit
-class TestMockServices:
-    """Test the MockServices utility class."""
+class TestWorkerCreation:
+    """Test RQ worker creation."""
     
-    def test_create_mock_ai_service(self):
-        """Test mock AI service creation."""
-        mock_service = MockServices.create_mock_ai_service()
-        
-        # Test analyze_text
-        result = mock_service.analyze_text("test")
-        assert "keywords" in result
-        assert "summary" in result
-        
-        # Test generate_embeddings
-        embeddings = mock_service.generate_embeddings("test")
-        assert isinstance(embeddings, list)
-        
-        # Test calculate_similarity
-        similarity = mock_service.calculate_similarity("text1", "text2")
-        assert isinstance(similarity, float)
+    def test_create_worker(self):
+        """Test worker creation."""
+        with patch('app.jobs.worker_config.get_redis') as mock_get_redis, \
+             patch('app.jobs.worker_config.Queue') as mock_queue_class, \
+             patch('app.jobs.worker_config.Worker') as mock_worker_class:
+            
+            mock_redis = MagicMock()
+            mock_get_redis.return_value = mock_redis
+            mock_queue = MagicMock()
+            mock_queue_class.return_value = mock_queue
+            mock_worker = MagicMock()
+            mock_worker_class.return_value = mock_worker
+            
+            worker = create_worker()
+            
+            # Should create queue and worker
+            mock_queue_class.assert_called_once_with('default', connection=mock_redis)
+            mock_worker_class.assert_called_once()
+            assert worker is mock_worker
     
-    def test_create_mock_pdf_processor(self):
-        """Test mock PDF processor creation."""
-        mock_processor = MockServices.create_mock_pdf_processor()
-        
-        # Test extract_text
-        text = mock_processor.extract_text("test.pdf")
-        assert isinstance(text, str)
-        
-        # Test extract_metadata
-        metadata = mock_processor.extract_metadata("test.pdf")
-        assert "title" in metadata
-        assert "author" in metadata
-
-
-@pytest.mark.unit
-class TestTestFileManager:
-    """Test the TestFileManager utility class."""
-    
-    def test_create_temp_dir(self):
-        """Test temporary directory creation."""
-        manager = TestFileManager()
-        temp_dir = manager.create_temp_dir()
-        
-        assert temp_dir.exists()
-        assert temp_dir.is_dir()
-        
-        # Cleanup
-        manager.cleanup()
-        assert not temp_dir.exists()
-    
-    def test_create_temp_file(self):
-        """Test temporary file creation."""
-        manager = TestFileManager()
-        
-        # Test text file
-        temp_file = manager.create_temp_file("test content", ".txt")
-        assert temp_file.exists()
-        assert temp_file.read_text() == "test content"
-        
-        # Test binary file
-        binary_file = manager.create_temp_file(binary_content=b"binary content", suffix=".bin")
-        assert binary_file.exists()
-        assert binary_file.read_bytes() == b"binary content"
-        
-        # Cleanup
-        manager.cleanup()
-        assert not temp_file.exists()
-        assert not binary_file.exists()
-    
-    def test_create_sample_pdf(self):
-        """Test sample PDF creation."""
-        manager = TestFileManager()
-        pdf_file = manager.create_sample_pdf()
-        
-        assert pdf_file.exists()
-        assert pdf_file.suffix == ".pdf"
-        
-        # Verify PDF content
-        content = pdf_file.read_bytes()
-        assert content.startswith(b"%PDF")
-        
-        # Cleanup
-        manager.cleanup()
-        assert not pdf_file.exists()
-
-
-@pytest.mark.unit
-class TestAssertionHelpers:
-    """Test the AssertionHelpers utility class."""
-    
-    def test_assert_response_structure(self):
-        """Test response structure assertion."""
-        response_data = {"key1": "value1", "key2": "value2"}
-        expected_keys = ["key1", "key2"]
-        
-        # Should not raise
-        AssertionHelpers.assert_response_structure(response_data, expected_keys)
-        
-        # Should raise
-        with pytest.raises(AssertionError):
-            AssertionHelpers.assert_response_structure(response_data, ["missing_key"])
-    
-    def test_assert_score_range(self):
-        """Test score range assertion."""
-        # Should not raise
-        AssertionHelpers.assert_score_range(0.5)
-        AssertionHelpers.assert_score_range(0.0)
-        AssertionHelpers.assert_score_range(1.0)
-        
-        # Should raise
-        with pytest.raises(AssertionError):
-            AssertionHelpers.assert_score_range(-0.1)
-        with pytest.raises(AssertionError):
-            AssertionHelpers.assert_score_range(1.1)
-    
-    def test_assert_valid_email(self):
-        """Test email validation assertion."""
-        # Should not raise
-        AssertionHelpers.assert_valid_email("test@example.com")
-        AssertionHelpers.assert_valid_email("user.name@domain.edu")
-        
-        # Should raise
-        with pytest.raises(AssertionError):
-            AssertionHelpers.assert_valid_email("invalid-email")
-        with pytest.raises(AssertionError):
-            AssertionHelpers.assert_valid_email("@domain.com")
-
-
-@pytest.mark.unit
-def test_pytest_markers():
-    """Test that pytest markers are properly configured."""
-    # This test verifies that the marker configuration is working
-    # by checking that this test itself has the 'unit' marker
-    import pytest
-    
-    # Get current test item
-    current_test = pytest.current_test if hasattr(pytest, 'current_test') else None
-    
-    # Basic marker test - if we get here, markers are working
-    assert True
-
-
-@pytest.mark.unit
-def test_coverage_configuration():
-    """Test that coverage configuration is working."""
-    # This test ensures coverage is being tracked
-    # by importing and using a module that should be covered
-    from tests.test_config import test_config
-    
-    assert test_config is not None
-    config = test_config.get_env_config("test")
-    assert config is not None
-    assert "url" in config
-
-
-@pytest.mark.integration
-def test_database_isolation():
-    """Test that database isolation is working between tests."""
-    # This test verifies that each test gets a clean database
-    # This would be expanded with actual database operations
-    assert True
-
-
-@pytest.mark.performance
-def test_performance_infrastructure():
-    """Test that performance testing infrastructure is working."""
-    import time
-    
-    start_time = time.time()
-    
-    # Simulate some work
-    time.sleep(0.001)
-    
-    elapsed = time.time() - start_time
-    
-    # Verify timing works
-    assert elapsed >= 0.001
-    assert elapsed < 0.1
+    def test_create_worker_custom_queues(self):
+        """Test worker creation with custom queue names."""
+        with patch('app.jobs.worker_config.get_redis') as mock_get_redis, \
+             patch('app.jobs.worker_config.Queue') as mock_queue_class, \
+             patch('app.jobs.worker_config.Worker') as mock_worker_class:
+            
+            mock_redis = MagicMock()
+            mock_get_redis.return_value = mock_redis
+            mock_queue = MagicMock()
+            mock_queue_class.return_value = mock_queue
+            mock_worker = MagicMock()
+            mock_worker_class.return_value = mock_worker
+            
+            custom_queues = ['queue1', 'queue2']
+            worker = create_worker(custom_queues)
+            
+            # Should create multiple queues
+            assert mock_queue_class.call_count == len(custom_queues)
+            mock_worker_class.assert_called_once()
+            assert worker is mock_worker

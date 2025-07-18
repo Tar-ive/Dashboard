@@ -30,6 +30,16 @@ class Settings:
         self.ANTHROPIC_MODEL = "claude-3-sonnet-20240229"
         self.ANTHROPIC_MAX_TOKENS = 4000
         
+        # Redis Configuration
+        self.REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+        self.REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+        self.REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+        self.REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
+        
+        # RQ Configuration
+        self.RQ_QUEUE_NAME = os.getenv("RQ_QUEUE_NAME", "default")
+        self.JOB_TIMEOUT = int(os.getenv("JOB_TIMEOUT", "300"))  # 5 minutes
+        
         # Ensure directories exist
         for path in [self.DATA_DIR, self.UPLOADS_DIR, self.OUTPUTS_DIR]:
             Path(path).mkdir(parents=True, exist_ok=True)

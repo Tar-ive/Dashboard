@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import solicitations, matching, teams, reports
+from app.api import solicitations, matching, teams, reports, jobs, deconstruct
 from app.config import settings
 
 app = FastAPI(
@@ -23,6 +23,8 @@ app.include_router(solicitations.router, prefix="/api")
 app.include_router(matching.router, prefix="/api")
 app.include_router(teams.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
+app.include_router(jobs.router, prefix="/api")
+app.include_router(deconstruct.router, prefix="/api")
 
 @app.get("/")
 def health_check():
@@ -41,8 +43,13 @@ def health_check():
 
 @app.get("/health")
 def detailed_health():
+    from app.jobs.redis_connection import RedisConnection
+    
+    redis_status = "connected" if RedisConnection.test_connection() else "disconnected"
+    
     return {
         "api_status": "ready",
+        "redis_status": redis_status,
         "anthropic_configured": bool(settings.ANTHROPIC_API_KEY),
         "version": settings.API_VERSION
     }
