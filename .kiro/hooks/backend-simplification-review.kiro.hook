@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Backend OverEngineering Mitigator",
+  "description": "Triggers a senior engineer review when backend source files are saved, analyzing for over-engineering, unnecessary abstractions, complexity vs value, duplicated structures, boilerplate code, unused structures, and providing architectural simplification recommendations",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "backend/app/**/*.py",
+      "Dashboard/backend/app/**/*.py"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Act as a senior software engineer conducting a code review focused on identifying over-engineering and suggesting simplifications. Analyze the modified backend files and related code, focusing on these key areas:\n\n1. **Analyze for Unnecessary Abstraction:** Identify abstractions that add complexity without providing significant value for the project's current stage.\n\n2. **Evaluate Complexity vs. Value:** Assess complex code patterns and structures to determine if their benefits justify the maintenance overhead.\n\n3. **Assess for Duplicated Structures & Routes:** Pinpoint duplicated logic, data structures, or API routes that could be consolidated.\n\n4. **Identify Boilerplate:** Flag repetitive boilerplate code that could be reduced through better patterns or code generation.\n\n5. **Pinpoint Unused Structures:** Report any functions, classes, variables, or imports that are no longer used.\n\n6. **Suggest Architectural Simplification:** Based on the findings, provide concrete recommendations for simplifying the architecture and improving maintainability.\n\nProvide a clear, actionable code review with specific examples and refactoring suggestions. Focus on practical improvements that will reduce complexity while maintaining functionality."
+  }
+}

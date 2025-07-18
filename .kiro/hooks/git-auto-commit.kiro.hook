@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Git Auto Commit",
+  "description": "Automatically commits all changes to git repository whenever Kiro completes its tasks, including all hook executions",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "**/*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Execute the following git commands to commit all changes:\n1. Run `git add .` to stage all changes\n2. Run `git commit -m \"Auto-commit: Kiro task completion - $(date)\"` to commit with timestamp\n3. If there are any conflicts or issues, resolve them appropriately\n4. Confirm the commit was successful by running `git status`\n\nMake sure to handle cases where there might be no changes to commit gracefully."
+  }
+}
