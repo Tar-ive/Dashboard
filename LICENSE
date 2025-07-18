@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2025 Saksham Adhikari
+Copyright (c) 2025 Saksham Adhikari and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,68 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+## Additional Information
+
+### Project: Intelligent Grant Matching Engine
+**Repository**: https://github.com/Tar-ive/Dashboard  
+**License Type**: MIT License  
+**Year**: 2025  
+**Primary Author**: Saksham Adhikari  
+
+### About This License
+
+The MIT License is one of the most permissive and widely-used open source licenses. It allows:
+
+✅ **Commercial Use** - Use the software for commercial purposes  
+✅ **Modification** - Modify the source code  
+✅ **Distribution** - Distribute the software  
+✅ **Private Use** - Use the software privately  
+✅ **Patent Use** - Use any patents that may be included  
+
+**Requirements:**
+- Include the original license and copyright notice in any copy of the software
+- Include the license notice in substantial portions of the software
+
+**Limitations:**
+- The software is provided "as is" without warranty
+- Authors are not liable for any damages or issues arising from use
+
+### Contributing
+
+By contributing to this project, you agree that your contributions will be licensed under the same MIT License. This ensures that all contributions remain freely available to the community.
+
+### Third-Party Dependencies
+
+This project uses various third-party libraries and dependencies, each with their own licenses:
+
+- **FastAPI**: MIT License
+- **Redis**: BSD 3-Clause License  
+- **RQ (Redis Queue)**: BSD License
+- **Pydantic**: MIT License
+- **PyMuPDF**: GNU Affero General Public License v3.0
+- **Python**: Python Software Foundation License
+
+Please refer to the `requirements.txt` file and individual package documentation for complete licensing information of all dependencies.
+
+### Attribution
+
+If you use this software in your research or projects, we appreciate (but do not require) attribution. You may reference:
+
+```
+Intelligent Grant Matching Engine
+Saksham Adhikari et al.
+https://github.com/Tar-ive/Dashboard
+```
+
+### Contact
+
+For questions about licensing or commercial use, please contact:
+- **Email**: [Your Contact Email]
+- **GitHub**: https://github.com/Tar-ive/Dashboard/issues
+
+---
+
+*This license applies to all files in this repository unless otherwise specified.*
