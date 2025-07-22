@@ -1,0 +1,17 @@
+{
+  "processing_timestamp": "2025-07-06T18:32:47.665498",
+  "current_year": 2025,
+  "min_proxy_score": 0.8,
+  "total_researchers": 72,
+  "total_papers": 6347,
+  "tfidf_features": 2749,
+  "sentence_model": 384,
+  "files_created": [
+    "tfidf_model.pkl",
+    "researcher_vectors.npz",
+    "conceptual_profiles.npz",
+    "evidence_index.json",
+    "researcher_metadata.parquet",
+    "processing_log.json"
+  ]
+}
