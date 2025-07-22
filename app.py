@@ -145,7 +145,21 @@ def main_workflow():
     if uploaded_file is not None:
         try:
             solicitation_data = json.load(uploaded_file)
-            solicitation = Solicitation.from_dict(solicitation_data)
+            
+            # Handle case where JSON contains a list of solicitations
+            if isinstance(solicitation_data, list):
+                if not solicitation_data:
+                    raise ValueError("Solicitation file is empty.")
+                # Process the first solicitation in the list
+                first_solicitation_dict = solicitation_data[0]
+                solicitation = Solicitation.from_dict(first_solicitation_dict)
+                
+                # Show info about multiple solicitations if present
+                if len(solicitation_data) > 1:
+                    st.info(f"📄 Found {len(solicitation_data)} solicitations. Processing the first one: '{first_solicitation_dict.get('title', 'Untitled')}'")
+            else:
+                # Handle single solicitation object
+                solicitation = Solicitation.from_dict(solicitation_data)
             
             # Display solicitation details
             col1, col2 = st.columns([2, 1])
