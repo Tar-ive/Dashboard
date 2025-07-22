@@ -34,16 +34,26 @@ class DataLoader:
         try:
             with open(_self.data_dir / 'tfidf_model.pkl', 'rb') as f:
                 tfidf_model = pickle.load(f)
-        except AttributeError as e:
-            if "ResearcherProfileProcessor" in str(e):
+        except (AttributeError, ModuleNotFoundError) as e:
+            if "ResearcherProfileProcessor" in str(e) or "main" in str(e):
                 print("🔧 Fixing pickle compatibility issue...")
                 # Create dummy class for pickle compatibility
                 class ResearcherProfileProcessor:
                     def comma_tokenizer(self, text: str):
                         return [token.strip() for token in text.split(',') if token.strip()]
                 
-                # Add class to current module - workaround for pickle loading
-                setattr(sys.modules[__name__], 'ResearcherProfileProcessor', ResearcherProfileProcessor)
+                # Add class to all possible module locations
+                import __main__
+                setattr(__main__, 'ResearcherProfileProcessor', ResearcherProfileProcessor)
+                setattr(sys.modules['__main__'], 'ResearcherProfileProcessor', ResearcherProfileProcessor)
+                
+                # Create a fake main module if needed
+                if 'main' not in sys.modules:
+                    import types
+                    fake_main = types.ModuleType('main')
+                    sys.modules['main'] = fake_main
+                
+                setattr(sys.modules['main'], 'ResearcherProfileProcessor', ResearcherProfileProcessor)
                 
                 # Try loading again
                 with open(_self.data_dir / 'tfidf_model.pkl', 'rb') as f:
