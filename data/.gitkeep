@@ -1,0 +1,7 @@
+# This file ensures the data directory is tracked by git
+# Upload your data files to this directory:
+# - tfidf_model.pkl
+# - researcher_vectors.npz  
+# - conceptual_profiles.npz
+# - evidence_index.json
+# - researcher_metadata.parquet
