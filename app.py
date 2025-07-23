@@ -49,36 +49,23 @@ def main():
     # Sidebar for configuration
     setup_sidebar()
     
-    # Main workflow
-    if st.session_state.data_loaded:
-        main_workflow()
-    else:
-        st.warning("⚠️ Please configure the system in the sidebar before proceeding.")
+    # Main workflow - system auto-initializes
+    main_workflow()
 
 
 def setup_sidebar():
-    """Setup sidebar for configuration and data loading."""
+    """Setup sidebar for system status and workflow."""
     
-    st.sidebar.header("🔧 System Configuration")
+    st.sidebar.header("🔧 System Status")
     
-    # Groq API Key input
-    groq_api_key = st.sidebar.text_input(
-        "Groq API Key (Optional)",
-        type="password",
-        value=os.getenv("GROQ_API_KEY", ""),
-        help="Enter your Groq API key for AI-powered strategic analysis. Get one at https://console.groq.com/"
-    )
-    
-    # Data directory input
-    data_dir = st.sidebar.text_input(
-        "Data Directory Path",
-        value="/content/drive/MyDrive/datastore/v2_DATA",
-        help="Path to the directory containing researcher data files"
-    )
-    
-    # Load data button
-    if st.sidebar.button("🚀 Initialize System", type="primary"):
-        initialize_system(data_dir, groq_api_key)
+    # Auto-initialize system if not loaded
+    if not st.session_state.data_loaded:
+        # Use persistent data directory and API key
+        data_dir = "./data"  # Local data directory
+        groq_api_key = os.getenv("GROQ_API_KEY", "")  # From Replit Secrets
+        
+        with st.spinner("🔄 Auto-initializing system..."):
+            initialize_system(data_dir, groq_api_key)
     
     # Display system status
     if st.session_state.data_loaded:
@@ -89,15 +76,20 @@ def setup_sidebar():
             data = st.session_state.all_data['data']
             st.sidebar.metric("Researchers", len(data['researcher_vectors']))
             st.sidebar.metric("Papers", len(data['conceptual_profiles']))
+        
+        # Show API key status
+        if os.getenv("GROQ_API_KEY"):
+            st.sidebar.success("🤖 AI Analysis Available")
+        else:
+            st.sidebar.info("💡 Add GROQ_API_KEY to Secrets for AI analysis")
     
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 📋 Workflow Steps")
     st.sidebar.markdown("""
-    1. **Initialize System** - Load data and models
-    2. **Upload Solicitation** - JSON format
-    3. **Analyze & Match** - Find top researchers
-    4. **Build Dream Team** - Optimal team assembly
-    5. **Generate Report** - AI-powered analysis
+    1. **Upload Solicitation** - JSON format
+    2. **Analyze & Match** - Find top researchers  
+    3. **Build Dream Team** - Optimal team assembly
+    4. **Generate Report** - AI-powered analysis
     """)
 
 
@@ -105,31 +97,59 @@ def initialize_system(data_dir: str, groq_api_key: str):
     """Initialize the system by loading all data and models."""
     
     try:
-        with st.spinner("🔄 Loading data and models... This may take a few minutes."):
-            # Initialize data loader
-            data_loader = DataLoader(data_dir)
-            
-            # Load all data
-            all_data = data_loader.get_all_data()
-            
-            # Store in session state
-            st.session_state.all_data = all_data
-            st.session_state.groq_api_key = groq_api_key
-            st.session_state.data_loaded = True
-            
-            # Run data quality diagnostics
-            data_loader.diagnose_data_quality(all_data)
-            
+        # Check if data directory exists and has required files
+        data_path = Path(data_dir)
+        required_files = [
+            'tfidf_model.pkl',
+            'researcher_vectors.npz',
+            'conceptual_profiles.npz', 
+            'evidence_index.json',
+            'researcher_metadata.parquet'
+        ]
+        
+        missing_files = [f for f in required_files if not (data_path / f).exists()]
+        
+        if missing_files:
+            st.session_state.data_loaded = False
+            st.warning(f"⚠️ Missing data files: {', '.join(missing_files)}")
+            st.info("📁 Please ensure all research data files are uploaded to the /data directory")
+            return
+        
+        # Initialize data loader
+        data_loader = DataLoader(data_dir)
+        
+        # Load all data
+        all_data = data_loader.get_all_data()
+        
+        # Store in session state
+        st.session_state.all_data = all_data
+        st.session_state.groq_api_key = groq_api_key
+        st.session_state.data_loaded = True
+        
+        # Run data quality diagnostics
+        data_loader.diagnose_data_quality(all_data)
+        
         st.success("✅ System initialized successfully!")
-        st.rerun()
         
     except Exception as e:
+        st.session_state.data_loaded = False
         st.error(f"❌ Failed to initialize system: {str(e)}")
-        st.error("Please check your data directory path and ensure all required files are present.")
+        st.info("📁 Please ensure all research data files are properly uploaded to the /data directory")
 
 
 def main_workflow():
     """Main application workflow after system initialization."""
+    
+    # Check if system is ready
+    if not st.session_state.data_loaded:
+        st.info("📁 System is loading... Please ensure data files are in the /data directory")
+        st.markdown("**Required files:**")
+        st.markdown("- tfidf_model.pkl")
+        st.markdown("- researcher_vectors.npz") 
+        st.markdown("- conceptual_profiles.npz")
+        st.markdown("- evidence_index.json")
+        st.markdown("- researcher_metadata.parquet")
+        return
     
     # Step 1: Solicitation Upload
     st.header("📄 Step 1: Upload Research Solicitation")
