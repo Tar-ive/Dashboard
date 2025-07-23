@@ -7,6 +7,7 @@ packages = ["cargo", "glibcLocales", "libiconv", "openssl", "pkg-config", "rustc
 [deployment]
 deploymentTarget = "autoscale"
 run = ["streamlit", "run", "app.py", "--server.port", "5000"]
+build = ["sh", "-c", "pip install sentence-transformers"]
 
 [workflows]
 runButton = "Project"
