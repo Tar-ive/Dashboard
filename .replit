@@ -7,7 +7,7 @@ packages = ["cargo", "glibcLocales", "libiconv", "openssl", "pkg-config", "rustc
 [deployment]
 deploymentTarget = "autoscale"
 run = ["streamlit", "run", "app.py", "--server.port", "5000"]
-build = ["sh", "-c", "pip install --no-deps sentence-transformers && pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu"]
+build = ["pip", "install", "-r", "requirements.txt"]
 
 [workflows]
 runButton = "Project"
