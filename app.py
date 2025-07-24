@@ -15,6 +15,7 @@ from modules.data_loader import DataLoader
 from modules.matcher import ResearcherMatcher
 from modules.team_builder import TeamBuilder
 from modules.report_generator import ReportGenerator
+from modules.solicitation_parser import SolicitationParser
 from modules.data_models import Solicitation
 
 
@@ -45,6 +46,10 @@ def main():
         st.session_state.team_results = None
     if 'final_report' not in st.session_state:
         st.session_state.final_report = None
+    if 'parsed_solicitation' not in st.session_state:
+        st.session_state.parsed_solicitation = None
+    if 'parsing_result' not in st.session_state:
+        st.session_state.parsing_result = None
     
     # Sidebar for configuration
     setup_sidebar()
@@ -86,7 +91,7 @@ def setup_sidebar():
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 📋 Workflow Steps")
     st.sidebar.markdown("""
-    1. **Upload Solicitation** - JSON format
+    1. **Upload Solicitation** - PDF or JSON format
     2. **Analyze & Match** - Find top researchers  
     3. **Build Dream Team** - Optimal team assembly
     4. **Generate Report** - AI-powered analysis
@@ -137,6 +142,208 @@ def initialize_system(data_dir: str, groq_api_key: str):
         st.info("📁 Please ensure all research data files are properly uploaded to the /data directory")
 
 
+def handle_document_upload(uploaded_file) -> Optional[Solicitation]:
+    """Handle multi-format document upload and parsing."""
+    
+    # Save uploaded file temporarily
+    temp_path = f"./data/temp_{uploaded_file.name}"
+    
+    try:
+        # Save uploaded file
+        with open(temp_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        
+        # Parse document with progress indicator
+        with st.spinner("🔄 Parsing document..."):
+            parser = SolicitationParser()
+            parsing_result = parser.parse_document(temp_path)
+        
+        # Store parsing result in session state
+        st.session_state.parsing_result = parsing_result
+        
+        # Show parsing results and quality indicators
+        display_parsing_results(parsing_result)
+        
+        # Convert to solicitation if quality is acceptable
+        if parsing_result.confidence_score > 0.3:  # Minimum threshold
+            solicitation = parser.convert_to_solicitation(parsing_result)
+            st.session_state.parsed_solicitation = solicitation
+            
+            # Show extraction preview with edit capabilities
+            solicitation = show_extraction_preview(solicitation, parsing_result)
+            
+            return solicitation
+        else:
+            st.warning("⚠️ Low extraction confidence. Please review and edit the extracted data.")
+            # Still allow user to proceed with manual editing
+            solicitation = parser.convert_to_solicitation(parsing_result)
+            st.session_state.parsed_solicitation = solicitation
+            solicitation = show_extraction_preview(solicitation, parsing_result)
+            return solicitation
+            
+    except Exception as e:
+        st.error(f"❌ Error parsing document: {str(e)}")
+        st.info("💡 Please try manual entry or check document format")
+        return None
+    finally:
+        # Clean up temporary file
+        if Path(temp_path).exists():
+            Path(temp_path).unlink()
+
+
+def handle_json_upload(uploaded_file) -> Optional[Solicitation]:
+    """Handle JSON file upload (existing functionality)."""
+    
+    try:
+        solicitation_data = json.load(uploaded_file)
+        
+        # Handle case where JSON contains a list of solicitations
+        if isinstance(solicitation_data, list):
+            if not solicitation_data:
+                raise ValueError("Solicitation file is empty.")
+            # Process the first solicitation in the list
+            first_solicitation_dict = solicitation_data[0]
+            solicitation = Solicitation.from_dict(first_solicitation_dict)
+            
+            # Show info about multiple solicitations if present
+            if len(solicitation_data) > 1:
+                st.info(f"📄 Found {len(solicitation_data)} solicitations. Processing the first one: '{first_solicitation_dict.get('title', 'Untitled')}'")
+        else:
+            # Handle single solicitation object
+            solicitation = Solicitation.from_dict(solicitation_data)
+        
+        return solicitation
+        
+    except Exception as e:
+        raise Exception(f"Error processing JSON file: {str(e)}")
+
+
+def display_parsing_results(parsing_result):
+    """Display PDF parsing results with quality indicators."""
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        confidence_color = "green" if parsing_result.confidence_score > 0.7 else "orange" if parsing_result.confidence_score > 0.4 else "red"
+        st.metric(
+            "Extraction Confidence", 
+            f"{parsing_result.confidence_score:.1%}",
+            help="Quality score of the extracted data"
+        )
+        st.markdown(f"<div style='color: {confidence_color}'>{'High' if parsing_result.confidence_score > 0.7 else 'Medium' if parsing_result.confidence_score > 0.4 else 'Low'} Quality</div>", unsafe_allow_html=True)
+    
+    with col2:
+        fields_extracted = len(parsing_result.extracted_data) - len(parsing_result.missing_fields)
+        st.metric("Fields Extracted", f"{fields_extracted}/{len(parsing_result.extracted_data)}")
+    
+    with col3:
+        st.metric("Processing Time", f"{parsing_result.processing_time:.1f}s")
+    
+    with col4:
+        st.metric("Source File", Path(parsing_result.source_file).name)
+    
+    # Show missing fields if any
+    if parsing_result.missing_fields:
+        st.warning(f"⚠️ Missing fields: {', '.join(parsing_result.missing_fields)}")
+
+
+def show_extraction_preview(solicitation: Solicitation, parsing_result) -> Solicitation:
+    """Show extraction preview with edit capabilities."""
+    
+    st.subheader("📝 Extraction Preview & Edit")
+    st.info("Review and edit the extracted information before proceeding to matching.")
+    
+    with st.form("extraction_edit_form"):
+        # Editable fields
+        title = st.text_input("Title", value=solicitation.title or "")
+        abstract = st.text_area("Abstract", value=solicitation.abstract or "", height=150)
+        
+        # Skills as text area for easier editing
+        skills_text = '\n'.join(solicitation.required_skills_checklist) if solicitation.required_skills_checklist else ""
+        skills_input = st.text_area(
+            "Required Skills (one per line)", 
+            value=skills_text, 
+            height=100,
+            help="Enter each skill on a separate line"
+        )
+        
+        # Optional fields
+        col1, col2 = st.columns(2)
+        with col1:
+            funding_amount = st.text_input("Funding Amount", value=solicitation.funding_amount or "")
+            program = st.text_input("Program", value=solicitation.program or "")
+        
+        with col2:
+            deadline = st.text_input("Deadline", value=solicitation.deadline or "")
+            description = st.text_area("Description", value=solicitation.description or "", height=100)
+        
+        # Submit button
+        submitted = st.form_submit_button("✅ Confirm & Proceed", type="primary")
+        
+        if submitted:
+            # Process skills input
+            skills_list = [skill.strip() for skill in skills_input.split('\n') if skill.strip()]
+            
+            # Create updated solicitation
+            updated_solicitation = Solicitation(
+                title=title,
+                abstract=abstract,
+                required_skills_checklist=skills_list,
+                funding_amount=funding_amount if funding_amount else None,
+                program=program if program else None,
+                deadline=deadline if deadline else None,
+                description=description if description else None,
+                parsing_metadata=solicitation.parsing_metadata,
+                extraction_confidence=parsing_result.confidence_score
+            )
+            
+            st.success("✅ Solicitation data confirmed!")
+            st.session_state.parsed_solicitation = updated_solicitation
+            st.rerun()
+    
+    return solicitation
+
+
+def display_solicitation_details(solicitation: Solicitation):
+    """Display solicitation details in a consistent format."""
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.subheader("📋 Solicitation Details")
+        st.write(f"**Title:** {solicitation.title}")
+        if solicitation.abstract:
+            abstract_preview = solicitation.abstract[:300] + "..." if len(solicitation.abstract) > 300 else solicitation.abstract
+            st.write(f"**Abstract:** {abstract_preview}")
+        
+        # Show parsing metadata if available
+        if solicitation.parsing_metadata:
+            with st.expander("🔍 Parsing Details"):
+                st.write(f"**Source:** {Path(solicitation.parsing_metadata.get('source_file', '')).name}")
+                st.write(f"**Processing Time:** {solicitation.parsing_metadata.get('processing_time', 0):.1f}s")
+                if solicitation.parsing_metadata.get('missing_fields'):
+                    st.write(f"**Missing Fields:** {', '.join(solicitation.parsing_metadata['missing_fields'])}")
+                if solicitation.extraction_confidence:
+                    st.write(f"**Extraction Confidence:** {solicitation.extraction_confidence:.1%}")
+    
+    with col2:
+        st.metric("Required Skills", len(solicitation.required_skills_checklist))
+        if solicitation.funding_amount:
+            st.write(f"**Funding:** {solicitation.funding_amount}")
+        if solicitation.program:
+            st.write(f"**Program:** {solicitation.program}")
+        if solicitation.deadline:
+            st.write(f"**Deadline:** {solicitation.deadline}")
+    
+    # Show required skills
+    if solicitation.required_skills_checklist:
+        with st.expander("🎯 View Required Skills"):
+            for i, skill in enumerate(solicitation.required_skills_checklist, 1):
+                st.write(f"{i}. {skill}")
+    else:
+        st.warning("⚠️ No required skills found. Consider adding them manually.")
+
+
 def main_workflow():
     """Main application workflow after system initialization."""
     
@@ -154,54 +361,38 @@ def main_workflow():
     # Step 1: Solicitation Upload
     st.header("📄 Step 1: Upload Research Solicitation")
     
+    # Template management interface
+    show_template_management()
+    
+    # File upload with multiple format support
     uploaded_file = st.file_uploader(
-        "Choose a JSON solicitation file",
-        type=['json'],
-        help="Upload a JSON file containing the research solicitation details"
+        "Choose a solicitation file",
+        type=['pdf', 'docx', 'txt', 'json'],
+        help="Upload a PDF, Word, text, or JSON file containing the research solicitation details"
     )
     
     solicitation = None
     
     if uploaded_file is not None:
+        file_type = uploaded_file.name.split('.')[-1].lower()
+        
         try:
-            solicitation_data = json.load(uploaded_file)
-            
-            # Handle case where JSON contains a list of solicitations
-            if isinstance(solicitation_data, list):
-                if not solicitation_data:
-                    raise ValueError("Solicitation file is empty.")
-                # Process the first solicitation in the list
-                first_solicitation_dict = solicitation_data[0]
-                solicitation = Solicitation.from_dict(first_solicitation_dict)
-                
-                # Show info about multiple solicitations if present
-                if len(solicitation_data) > 1:
-                    st.info(f"📄 Found {len(solicitation_data)} solicitations. Processing the first one: '{first_solicitation_dict.get('title', 'Untitled')}'")
+            if file_type in ['pdf', 'docx', 'txt']:
+                solicitation = handle_document_upload(uploaded_file)
+            elif file_type == 'json':
+                solicitation = handle_json_upload(uploaded_file)
             else:
-                # Handle single solicitation object
-                solicitation = Solicitation.from_dict(solicitation_data)
-            
-            # Display solicitation details
-            col1, col2 = st.columns([2, 1])
-            
-            with col1:
-                st.subheader("📋 Solicitation Details")
-                st.write(f"**Title:** {solicitation.title}")
-                st.write(f"**Abstract:** {solicitation.abstract[:300]}...")
+                st.error("❌ Unsupported file format. Please upload a PDF, Word, text, or JSON file.")
+                return
                 
-            with col2:
-                st.metric("Required Skills", len(solicitation.required_skills_checklist))
-                if solicitation.funding_amount:
-                    st.write(f"**Funding:** {solicitation.funding_amount}")
-            
-            # Show required skills
-            with st.expander("🎯 View Required Skills"):
-                for i, skill in enumerate(solicitation.required_skills_checklist, 1):
-                    st.write(f"{i}. {skill}")
-                    
         except Exception as e:
             st.error(f"❌ Error processing solicitation file: {str(e)}")
+            st.info("💡 Please try manual entry or check file format")
             return
+    
+    # Display solicitation details if available
+    if solicitation is not None:
+        display_solicitation_details(solicitation)
     
     # Step 2: Researcher Matching
     if solicitation is not None:
@@ -409,6 +600,65 @@ def generate_final_report(solicitation: Solicitation):
     except Exception as e:
         st.error(f"❌ Error generating report: {str(e)}")
 
+
+def show_template_management():
+    """Display template management interface."""
+    
+    with st.expander("🔧 Template Management & Performance"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("📋 Extraction Templates")
+            
+            # Initialize parser to access templates
+            parser = SolicitationParser()
+            templates = parser.list_templates()
+            
+            if templates:
+                st.write("**Available Templates:**")
+                for template in templates:
+                    st.write(f"• **{template['name']}** - {template['description']} ({template['field_count']} fields)")
+            else:
+                st.info("No custom templates saved yet.")
+            
+            # Template creation
+            st.write("**Create New Template:**")
+            template_name = st.text_input("Template Name", key="new_template_name")
+            template_desc = st.text_input("Description", key="new_template_desc")
+            
+            if st.button("💾 Save Current Config as Template"):
+                if template_name:
+                    if parser.save_template(template_name, template_desc):
+                        st.success(f"✅ Template '{template_name}' saved!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to save template")
+                else:
+                    st.warning("Please enter a template name")
+        
+        with col2:
+            st.subheader("📊 Performance Statistics")
+            
+            stats = parser.get_performance_stats()
+            
+            if stats['total_documents_processed'] > 0:
+                col2a, col2b = st.columns(2)
+                
+                with col2a:
+                    st.metric("Documents Processed", stats['total_documents_processed'])
+                    st.metric("Success Rate", f"{stats['success_rate']:.1%}")
+                
+                with col2b:
+                    if 'avg_processing_time' in stats:
+                        st.metric("Avg Processing Time", f"{stats['avg_processing_time']:.2f}s")
+                    if 'avg_memory_usage' in stats:
+                        st.metric("Avg Memory Usage", f"{stats['avg_memory_usage']:.1f}MB")
+                
+                # Performance chart
+                if len(stats['processing_times']) > 1:
+                    st.line_chart(stats['processing_times'][-20:])  # Last 20 processing times
+            else:
+                st.info("No documents processed yet.")
 
 def display_final_report():
     """Display the final comprehensive report."""

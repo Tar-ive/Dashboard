@@ -1,0 +1,56 @@
+2025-07-23 19:09:02,966 - solicitation_parser - INFO - Extracting text from /var/folders/bn/8q4nc4_15hs082tp8mwy2j7m0000gn/T/tmporzwin_a/test.txt (type: .txt)
+2025-07-23 19:09:02,967 - solicitation_parser - INFO - Document type detection: nsf (confidence: 0.50)
+2025-07-23 19:09:02,971 - solicitation_parser - INFO - Successfully processed /var/folders/bn/8q4nc4_15hs082tp8mwy2j7m0000gn/T/tmporzwin_a/test.txt (type: txt, time: 0.06s, memory: 1.6MB, confidence: 0.00)
+2025-07-23 19:11:31,208 - solicitation_parser - INFO - Extracting text from data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: .pdf)
+2025-07-23 19:11:31,747 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:11:31,748 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:11:31,748 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:11:31,758 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.55s, memory: -26.7MB, confidence: 0.97)
+2025-07-23 19:11:48,008 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:11:48,008 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:11:48,009 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:11:48,017 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.02s, memory: 0.9MB, confidence: 0.97)
+2025-07-23 19:11:48,449 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:11:48,449 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:11:48,450 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:11:48,456 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.02s, memory: 0.5MB, confidence: 0.97)
+2025-07-23 19:11:49,142 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:11:49,142 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:11:49,143 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:11:49,148 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.02s, memory: 0.2MB, confidence: 0.97)
+2025-07-23 19:11:49,504 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:11:49,504 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:11:49,504 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:11:49,510 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.01s, memory: 0.4MB, confidence: 0.97)
+2025-07-23 19:11:50,084 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:11:50,084 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:11:50,086 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:11:50,098 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.03s, memory: 0.7MB, confidence: 0.97)
+2025-07-23 19:11:50,462 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:11:50,462 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:11:50,462 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:11:50,469 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.02s, memory: 0.4MB, confidence: 0.97)
+2025-07-23 19:11:57,069 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:11:57,070 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:11:57,071 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:11:57,077 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.02s, memory: 0.4MB, confidence: 0.97)
+2025-07-23 19:11:58,689 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:11:58,690 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:11:58,690 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:11:58,695 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.01s, memory: 0.9MB, confidence: 0.97)
+2025-07-23 19:12:14,696 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:12:14,697 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:12:14,697 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:12:14,702 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.02s, memory: 0.7MB, confidence: 0.97)
+2025-07-23 19:12:15,922 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:12:15,922 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:12:15,923 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:12:15,928 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.02s, memory: 0.1MB, confidence: 0.97)
+2025-07-23 19:12:16,320 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:12:16,320 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:12:16,321 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:12:16,327 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.02s, memory: 0.2MB, confidence: 0.97)
+2025-07-23 19:12:16,922 - solicitation_parser - INFO - Document type detection: nsf (confidence: 1.00)
+2025-07-23 19:12:16,922 - solicitation_parser - INFO - Auto-selected template: nsf_template
+2025-07-23 19:12:16,923 - solicitation_parser - INFO - Loaded template: nsf_template
+2025-07-23 19:12:16,928 - solicitation_parser - INFO - Successfully processed ./data/temp_NSF 23-506_ Expanding AI Innovation through Capacity Building and Partnerships (ExpandAI) _ NSF - National Science Foundation (1).pdf (type: pdf, time: 0.01s, memory: 0.1MB, confidence: 0.97)

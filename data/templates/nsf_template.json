@@ -1,0 +1,74 @@
+{
+  "name": "nsf_template",
+  "description": "Optimized extraction patterns for NSF solicitations",
+  "created_at": "2024-01-01T00:00:00",
+  "extraction_configs": {
+    "title": {
+      "field_name": "title",
+      "patterns": [
+        "NSF\\s+\\d{2}-\\d{3}:\\s*([^\\n]+(?:\\n[^\\n]+)*?)(?=\\n(?:Broadening|Program Solicitation))",
+        "Program Title:\\s*([^\\n]+)",
+        "Solicitation Title:\\s*([^\\n]+)"
+      ],
+      "extraction_type": "single",
+      "post_process": null,
+      "required": true,
+      "default_value": ""
+    },
+    "abstract": {
+      "field_name": "abstract",
+      "patterns": [
+        "(?:NSF\\s+\\d{2}-\\d{3}:[^\\n]+\\n[^\\n]+\\n)([^\\n]+)(?=\\nProgram Solicitation)",
+        "Synopsis of Program:\\s*(.*?)(?=\\nCognizant Program Officer)",
+        "II\\.\\s*Program Description\\s*(.*?)(?=\\n(?:III\\.|Award Information))"
+      ],
+      "extraction_type": "single",
+      "post_process": null,
+      "required": true,
+      "default_value": ""
+    },
+    "required_skills": {
+      "field_name": "required_skills",
+      "patterns": [
+        "enhancement of existing projects by virtue of new collaboration[^;]*;([^;]+(?:;[^;]+)*)",
+        "initiation of new projects made possible by the collaboration[^;]*;([^;]+(?:;[^;]+)*)",
+        "community building activities[^;]*;([^;]+(?:;[^;]+)*)"
+      ],
+      "extraction_type": "multiple",
+      "post_process": null,
+      "required": true,
+      "default_value": ""
+    },
+    "funding_amount": {
+      "field_name": "funding_amount",
+      "patterns": [
+        "Anticipated Funding Amount:\\s*\\$?\\s*([\\d,]+(?:\\.\\d{2})?)",
+        "Total Program Funding:\\s*\\$?\\s*([\\d,]+(?:\\.\\d{2})?)"
+      ],
+      "extraction_type": "single",
+      "post_process": null,
+      "required": false,
+      "default_value": ""
+    },
+    "deadline": {
+      "field_name": "deadline",
+      "patterns": [
+        "Submission Window Date\\(s\\)[^:]*:\\s*([^\\n]+(?:\\n\\s*[A-Z][a-z]+ \\d+, \\d+ - [A-Z][a-z]+ \\d+, \\d+)*)"
+      ],
+      "extraction_type": "single",
+      "post_process": null,
+      "required": false,
+      "default_value": ""
+    },
+    "program": {
+      "field_name": "program",
+      "patterns": [
+        "(NSF\\s+\\d{2}-\\d{3})"
+      ],
+      "extraction_type": "single",
+      "post_process": null,
+      "required": false,
+      "default_value": ""
+    }
+  }
+}

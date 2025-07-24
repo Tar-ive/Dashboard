@@ -56,6 +56,27 @@ class DreamTeamReport:
 
 
 @dataclass
+class ExtractionConfig:
+    """Configuration for data extraction patterns."""
+    field_name: str
+    patterns: List[str]
+    extraction_type: str = "single"  # single, multiple, nested, table
+    post_process: Optional[str] = None
+    required: bool = False
+    default_value: Any = ""
+
+
+@dataclass
+class SolicitationParsingResult:
+    """Results from solicitation parsing process."""
+    extracted_data: Dict[str, Any]
+    confidence_score: float
+    missing_fields: List[str]
+    source_file: str
+    processing_time: float
+
+
+@dataclass
 class Solicitation:
     """Formal solicitation object with all required fields."""
     title: str
@@ -66,6 +87,9 @@ class Solicitation:
     funding_amount: Optional[str] = None
     deadline: Optional[str] = None
     program: Optional[str] = None
+    # Optional parsing metadata
+    parsing_metadata: Optional[Dict[str, Any]] = None
+    extraction_confidence: Optional[float] = None
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Solicitation':
@@ -78,5 +102,7 @@ class Solicitation:
             description=data.get('description'),
             funding_amount=data.get('funding_amount'),
             deadline=data.get('deadline'),
-            program=data.get('program')
+            program=data.get('program'),
+            parsing_metadata=data.get('parsing_metadata'),
+            extraction_confidence=data.get('extraction_confidence')
         )
