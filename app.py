@@ -10,12 +10,24 @@ import pandas as pd
 from pathlib import Path
 from typing import Optional
 
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+# Debug GROQ API key loading
+groq_api_key = os.getenv("GROQ_API_KEY")
+if groq_api_key:
+    print(f"✅ GROQ_API_KEY loaded successfully (length: {len(groq_api_key)})")
+else:
+    print("⚠️ GROQ_API_KEY not found in environment variables")
+
 # Import our modular classes
 from modules.data_loader import DataLoader
 from modules.matcher import ResearcherMatcher
 from modules.team_builder import TeamBuilder
 from modules.report_generator import ReportGenerator
 from modules.solicitation_parser import SolicitationParser
+from modules.enhanced_skill_extractor import EnhancedSkillExtractor
 from modules.data_models import Solicitation
 
 
@@ -50,6 +62,8 @@ def main():
         st.session_state.parsed_solicitation = None
     if 'parsing_result' not in st.session_state:
         st.session_state.parsing_result = None
+    if 'enhanced_extraction_result' not in st.session_state:
+        st.session_state.enhanced_extraction_result = None
     
     # Sidebar for configuration
     setup_sidebar()
@@ -88,13 +102,32 @@ def setup_sidebar():
         else:
             st.sidebar.info("💡 Add GROQ_API_KEY to Secrets for AI analysis")
     
+    # Enhanced skill extraction status
+    if 'enhanced_extraction_result' in st.session_state and st.session_state.enhanced_extraction_result:
+        result = st.session_state.enhanced_extraction_result
+        st.sidebar.markdown("### 🤖 **ENHANCED AI EXTRACTION**")
+        st.sidebar.success("✅ **ACTIVE**")
+        st.sidebar.metric("🎯 Skills Found", len(result.merged_skills))
+        st.sidebar.metric("📊 Quality", f"{result.quality_score:.2f}")
+        st.sidebar.metric("🔧 Method", result.source_method.title())
+        
+        # Performance stats if available
+        if hasattr(st.session_state, 'skill_extractor_stats'):
+            stats = st.session_state.skill_extractor_stats
+            if stats.get('total_extractions', 0) > 0:
+                st.sidebar.metric("Success Rate", f"{stats.get('success_rate', 0):.1%}")
+    else:
+        st.sidebar.markdown("### 🤖 Enhanced AI Extraction")
+        st.sidebar.info("💡 Upload a document to see AI-powered skill extraction")
+    
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 📋 Workflow Steps")
     st.sidebar.markdown("""
     1. **Upload Solicitation** - PDF or JSON format
-    2. **Analyze & Match** - Find top researchers  
-    3. **Build Dream Team** - Optimal team assembly
-    4. **Generate Report** - AI-powered analysis
+    2. **Enhanced Skill Extraction** - AI-powered skill analysis
+    3. **Analyze & Match** - Find top researchers  
+    4. **Build Dream Team** - Optimal team assembly
+    5. **Generate Report** - AI-powered analysis
     """)
 
 
@@ -143,7 +176,7 @@ def initialize_system(data_dir: str, groq_api_key: str):
 
 
 def handle_document_upload(uploaded_file) -> Optional[Solicitation]:
-    """Handle multi-format document upload and parsing."""
+    """Handle multi-format document upload and parsing with enhanced skill extraction."""
     
     # Save uploaded file temporarily
     temp_path = f"./data/temp_{uploaded_file.name}"
@@ -164,9 +197,49 @@ def handle_document_upload(uploaded_file) -> Optional[Solicitation]:
         # Show parsing results and quality indicators
         display_parsing_results(parsing_result)
         
+        # Enhanced skill extraction
+        st.info("🚀 **NEW FEATURE**: Enhanced AI-powered skill extraction is now running...")
+        with st.spinner("🤖 Running enhanced skill extraction with GROQ AI..."):
+            try:
+                # Extract text for skill extraction
+                text, _ = parser.extract_text_from_file(temp_path)
+                
+                # Initialize enhanced skill extractor
+                groq_api_key = os.getenv("GROQ_API_KEY")
+                if groq_api_key:
+                    st.success(f"✅ GROQ API key loaded (length: {len(groq_api_key)})")
+                else:
+                    st.warning("⚠️ GROQ API key not found - using fallback extraction")
+                
+                skill_extractor = EnhancedSkillExtractor(groq_api_key=groq_api_key)
+                
+                # Run dual-model skill extraction
+                enhanced_extraction_result = skill_extractor.extract_skills_dual_model(text)
+                st.session_state.enhanced_extraction_result = enhanced_extraction_result
+                
+                st.success(f"🎉 Enhanced extraction completed! Found {len(enhanced_extraction_result.merged_skills)} skills with quality score {enhanced_extraction_result.quality_score:.2f}")
+                
+            except Exception as e:
+                st.error(f"❌ Enhanced skill extraction failed: {str(e)}")
+                # Create a fallback result
+                enhanced_extraction_result = None
+                st.session_state.enhanced_extraction_result = None
+        
+        # Show enhanced skill extraction results
+        if enhanced_extraction_result:
+            display_enhanced_skill_extraction(enhanced_extraction_result)
+        else:
+            st.warning("⚠️ Enhanced skill extraction was not available - using basic extraction")
+        
         # Convert to solicitation if quality is acceptable
         if parsing_result.confidence_score > 0.3:  # Minimum threshold
             solicitation = parser.convert_to_solicitation(parsing_result)
+            
+            # Use enhanced skills if available and better quality
+            if enhanced_extraction_result.merged_skills and enhanced_extraction_result.quality_score > 0.5:
+                solicitation.required_skills_checklist = enhanced_extraction_result.merged_skills
+                st.success("✅ Using enhanced skill extraction results!")
+            
             st.session_state.parsed_solicitation = solicitation
             
             # Show extraction preview with edit capabilities
@@ -177,6 +250,11 @@ def handle_document_upload(uploaded_file) -> Optional[Solicitation]:
             st.warning("⚠️ Low extraction confidence. Please review and edit the extracted data.")
             # Still allow user to proceed with manual editing
             solicitation = parser.convert_to_solicitation(parsing_result)
+            
+            # Use enhanced skills if available
+            if enhanced_extraction_result.merged_skills:
+                solicitation.required_skills_checklist = enhanced_extraction_result.merged_skills
+            
             st.session_state.parsed_solicitation = solicitation
             solicitation = show_extraction_preview(solicitation, parsing_result)
             return solicitation
@@ -245,6 +323,66 @@ def display_parsing_results(parsing_result):
     # Show missing fields if any
     if parsing_result.missing_fields:
         st.warning(f"⚠️ Missing fields: {', '.join(parsing_result.missing_fields)}")
+
+
+def display_enhanced_skill_extraction(extraction_result):
+    """Display enhanced skill extraction results with comparison interface."""
+    
+    # Make it very prominent with a colored header
+    st.markdown("---")
+    st.markdown("## 🤖 **ENHANCED AI SKILL EXTRACTION RESULTS**")
+    st.markdown("*Powered by GROQ AI + OpenAlex Topic Classification*")
+    
+    # Show a success message
+    if extraction_result.quality_score > 0.7:
+        st.success("🎉 **HIGH QUALITY** extraction completed!")
+    elif extraction_result.quality_score > 0.4:
+        st.info("✅ **GOOD QUALITY** extraction completed!")
+    else:
+        st.warning("⚠️ **BASIC QUALITY** extraction - manual review recommended")
+    
+    # Summary metrics
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("🎯 Skills Extracted", len(extraction_result.merged_skills))
+    with col2:
+        quality_color = "green" if extraction_result.quality_score > 0.7 else "orange" if extraction_result.quality_score > 0.4 else "red"
+        st.metric("📊 Quality Score", f"{extraction_result.quality_score:.2f}")
+        st.markdown(f"<div style='color: {quality_color}; font-weight: bold;'>{'🟢 High' if extraction_result.quality_score > 0.7 else '🟡 Medium' if extraction_result.quality_score > 0.4 else '🔴 Low'} Quality</div>", unsafe_allow_html=True)
+    with col3:
+        st.metric("⚡ Extraction Time", f"{extraction_result.extraction_time:.2f}s")
+    with col4:
+        st.metric("🔧 Source Method", extraction_result.source_method.title())
+    
+    # Show final merged skills prominently FIRST
+    if extraction_result.merged_skills:
+        st.markdown("### ✨ **FINAL EXTRACTED SKILLS**")
+        st.markdown("*These skills will be used for researcher matching:*")
+        
+        # Display skills in a nice format
+        skills_cols = st.columns(3)
+        for i, skill in enumerate(extraction_result.merged_skills):
+            col_idx = i % 3
+            with skills_cols[col_idx]:
+                st.markdown(f"**{i+1}.** {skill}")
+        
+        # Show skills as tags
+        skills_text = " • ".join(extraction_result.merged_skills)
+        st.info(f"**All Skills:** {skills_text}")
+    else:
+        st.error("❌ No skills were extracted. Manual entry required.")
+    
+    # Expandable detailed comparison
+    with st.expander("🔍 **View Detailed AI vs Topic Classification Comparison**", expanded=False):
+        try:
+            # Create the comparison interface with proper API key
+            groq_api_key = os.getenv("GROQ_API_KEY")
+            skill_extractor = EnhancedSkillExtractor(groq_api_key=groq_api_key)
+            skill_extractor.create_skill_comparison_interface(extraction_result)
+        except Exception as e:
+            st.error(f"Error displaying comparison: {str(e)}")
+    
+    st.markdown("---")
 
 
 def show_extraction_preview(solicitation: Solicitation, parsing_result) -> Solicitation:

@@ -8,6 +8,10 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 import pandas as pd
 
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
 try:
     from groq import Groq
     GROQ_AVAILABLE = True
@@ -24,15 +28,22 @@ class ReportGenerator:
         """Initialize with optional Groq API key."""
         self.groq_client = None
         
-        if GROQ_AVAILABLE and groq_api_key:
+        # Use provided key or load from environment
+        api_key = groq_api_key or os.getenv("GROQ_API_KEY")
+        
+        if GROQ_AVAILABLE and api_key:
             try:
                 from groq import Groq
-                self.groq_client = Groq(api_key=groq_api_key)
-                print("✅ Groq API client initialized for strategic analysis")
+                self.groq_client = Groq(api_key=api_key)
+                print(f"✅ Groq API client initialized for strategic analysis (key length: {len(api_key)})")
             except Exception as e:
-                print(f"⚠️ Groq API setup failed: {e}")
+                print(f"❌ Groq API setup failed: {e}")
         else:
-            print("⚠️ Groq API not available. Strategic analysis will be basic.")
+            if not GROQ_AVAILABLE:
+                print("⚠️ Groq library not available. Install with: pip install groq")
+            elif not api_key:
+                print("⚠️ GROQ_API_KEY not found in environment variables")
+            print("⚠️ Strategic analysis will be basic.")
     
     def generate_strategic_analysis(self, team_members: List[Dict], 
                                    solicitation: Solicitation,
@@ -79,7 +90,7 @@ class ReportGenerator:
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
-                model="llama3-8b-8192",
+                model="llama-3.3-70b-versatile",  # Updated to current model
                 temperature=0.7,
                 max_tokens=600
             )

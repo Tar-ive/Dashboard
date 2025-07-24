@@ -95,6 +95,19 @@ However, the system lacks validation frameworks, test cases, and evaluation metr
 
 ### Requirement 8
 
+**User Story:** As a research administrator, I want enhanced skill extraction from solicitation documents using advanced LLM prompting and dual-model validation, so that the scoring algorithm has high-quality, granular skills to match against.
+
+#### Acceptance Criteria
+
+1. WHEN extracting skills from solicitations THEN the system SHALL use an expert-role LLM prompt that produces 8-15 concise, atomic skill phrases (2-5 words each)
+2. WHEN processing solicitation text THEN the system SHALL ignore administrative boilerplate and focus on scientific/technical requirements
+3. WHEN validating skill extraction THEN the system SHALL use the OpenAlex BERT topic classifier as a secondary validation model
+4. WHEN combining skill sources THEN the system SHALL merge LLM-extracted skills with OpenAlex topic classifications to create comprehensive skill lists
+5. WHEN comparing extraction methods THEN the system SHALL evaluate which approach produces better scoring accuracy and team matching results
+6. WHEN skills are extracted THEN the system SHALL ensure they are in optimal format for both TF-IDF and conceptual similarity matching
+
+### Requirement 9
+
 **User Story:** As a system administrator, I want comprehensive test reporting and analytics on scoring algorithm performance, so that I can monitor system health and identify areas needing attention.
 
 #### Acceptance Criteria
