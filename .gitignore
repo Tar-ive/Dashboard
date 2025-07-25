@@ -2,3 +2,6 @@
 .local
 .config
 .env 
+.__pycache__
+.streamlit
+.venv
