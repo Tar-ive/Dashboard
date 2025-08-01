@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Data Loading Test</title>
+</head>
+<body>
+    <h1>Data Loading Test</h1>
+    <div id="status">Loading...</div>
+    <div id="results"></div>
+    
+    <script>
+        async function testDataLoading() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                statusDiv.textContent = 'Testing uncompressed data...';
+                const response = await fetch('/data/visualization-data.json');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                statusDiv.textContent = 'Success!';
+                resultsDiv.innerHTML = `
+                    <h2>Data loaded successfully:</h2>
+                    <p>Publications: ${data.p ? data.p.length : 'undefined'}</p>
+                    <p>Researchers: ${data.r ? data.r.length : 'undefined'}</p>
+                    <p>Clusters: ${data.c ? data.c.length : 'undefined'}</p>
+                    <p>Metadata: ${data.meta ? JSON.stringify(data.meta) : 'undefined'}</p>
+                    <p>View config: ${data.v ? JSON.stringify(data.v) : 'undefined'}</p>
+                `;
+                
+            } catch (error) {
+                statusDiv.textContent = 'Error!';
+                resultsDiv.innerHTML = `
+                    <h2>Error loading data:</h2>
+                    <p style="color: red;">${error.message}</p>
+                    <p>Stack: ${error.stack}</p>
+                `;
+            }
+        }
+        
+        testDataLoading();
+    </script>
+</body>
+</html>

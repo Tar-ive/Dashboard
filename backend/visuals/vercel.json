@@ -9,11 +9,19 @@
   ],
   "routes": [
     {
-      "src": "/data/(.*)",
+      "src": "/data/(.*\\.gz)",
       "dest": "/public/data/$1",
       "headers": {
         "Cache-Control": "public, max-age=31536000, immutable",
-        "Content-Encoding": "gzip"
+        "Content-Encoding": "gzip",
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "src": "/data/(.*)",
+      "dest": "/public/data/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
       }
     },
     {
@@ -37,7 +45,7 @@
           "value": "gzip"
         },
         {
-          "key": "Content-Type", 
+          "key": "Content-Type",
           "value": "application/json"
         },
         {
