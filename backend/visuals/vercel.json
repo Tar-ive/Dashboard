@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "headers": [
     {
-      "source": "/data/(.*\\.gz)",
+      "source": "/data/(.*).gz",
       "headers": [
         {
           "key": "Content-Encoding",
@@ -19,7 +19,16 @@
       ]
     },
     {
-      "source": "/(.*\\.(js|css))",
+      "source": "/(.*).js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/(.*).css",
       "headers": [
         {
           "key": "Cache-Control",
