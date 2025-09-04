@@ -1,0 +1,15 @@
+data/
+test/
+*.pyc
+__pycache__/
+.pytest_cache/
+*.pkl
+*.npz
+*.parquet
+.env
+.DS_Store
+.config/
+.vscode/
+*.log
+logs/
+DEPLOYMENT_PLAN.md

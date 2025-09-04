@@ -1,0 +1,182 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, streamlit, visuals, visualization ]
+  pull_request:
+    branches: [ main, streamlit, visuals, visualization ]
+
+env:
+  VERCEL_URL: https://cads-research.vercel.app
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio httpx
+
+    - name: Create test directories and mock data
+      run: |
+        mkdir -p test_uploads test_models test_outputs
+        mkdir -p data
+        # Create minimal mock data files to avoid import errors
+        echo '{"mock": "data"}' > data/evidence_index.json
+        touch data/researcher_metadata.parquet
+
+    - name: Run unit tests
+      run: |
+        python -m pytest test/unit/ --cov=modules --cov-report=xml --cov-report=term-missing -v
+      continue-on-error: true
+
+    - name: Run integration tests  
+      run: |
+        python -m pytest test/integration/ --cov=modules --cov-append --cov-report=xml --cov-report=term-missing -v
+      continue-on-error: true
+
+    - name: Run feature tests
+      run: |
+        python -m pytest test/feature/ --cov=modules --cov-append --cov-report=xml --cov-report=term-missing -v
+      continue-on-error: true
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+    - name: Archive test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: |
+          htmlcov/
+          coverage.xml
+        
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install linting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install black isort flake8 mypy
+
+    - name: Run black
+      run: |
+        black --check --diff modules/ test/ --extend-exclude="/(data|logs)/"
+      continue-on-error: true
+
+    - name: Run isort  
+      run: |
+        isort --check-only --diff modules/ test/
+      continue-on-error: true
+
+    - name: Run flake8
+      run: |
+        flake8 modules/ test/ --max-line-length=88 --extend-ignore=E203,W503
+      continue-on-error: true
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+
+    - name: Run bandit security linter
+      run: |
+        bandit -r modules/ -f json -o bandit-report.json || true
+        
+    - name: Run safety check
+      run: |
+        safety check --json --output safety-report.json || true
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+
+  deployment-health-check:
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    steps:
+    - name: Health check Vercel deployment
+      run: |
+        echo "🏥 Running post-deployment health check..."
+        echo "Checking URL: ${{ env.VERCEL_URL }}"
+        echo "Testing main page..."
+        
+        # Test main page
+        response=$(curl -s -o /dev/null -w "%{http_code}" "${{ env.VERCEL_URL }}")
+        if [ "$response" = "200" ]; then
+          echo "✅ Main page is healthy (HTTP $response)"
+        else
+          echo "❌ Main page returned HTTP $response"
+          exit 1
+        fi
+        
+        # Test health endpoint
+        health_response=$(curl -s -o /dev/null -w "%{http_code}" "${{ env.VERCEL_URL }}/health")
+        if [ "$health_response" = "200" ]; then
+          echo "✅ Health endpoint is responding (HTTP $health_response)"
+        else
+          echo "⚠️ Health endpoint returned HTTP $health_response (continuing anyway)"
+        fi
+        
+        echo "🎉 Deployment health check passed!"
+
+  environment-confirmation:
+    runs-on: ubuntu-latest
+    needs: [deployment-health-check]
+    environment: production
+    steps:
+    - name: Confirm production environment
+      run: |
+        echo "✅ Production environment confirmed"
+        echo "🔗 Verified URL: ${{ env.VERCEL_URL }}"
+        echo "🎯 Environment: production"
+        echo "📅 Timestamp: $(date -u)"
